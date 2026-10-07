@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DLCL Maintenance Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#f4f6f9;--card:#ffffff;--ink:#16202e;--ink2:#51607a;--line:#e1e6ee;--accent:#1f4fd8;--accent-bg:#e8eefc;
+  --done:#157f4a;--done-bg:#e1f4e9;--delay:#b36a00;--delay-bg:#fdf0d5;--miss:#c0262d;--miss-bg:#fde6e7;
+  --nex:#6b2fb3;--nex-bg:#efe6fa;--up:#1f6fd1;--up-bg:#e3eefc;--nor:#6b7587;--nor-bg:#eceff4;--shadow:0 1px 2px rgba(20,30,50,.06),0 2px 8px rgba(20,30,50,.04);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#0f141c;--card:#18202c;--ink:#e8edf5;--ink2:#97a5bd;--line:#2a3547;--accent:#6c93ff;--accent-bg:#1d2a4a;
+  --done:#46c987;--done-bg:#12301f;--delay:#f0b44c;--delay-bg:#3a2b0c;--miss:#ff7b81;--miss-bg:#3d1519;--nex:#b98bf0;--nex-bg:#2b1b45;--up:#74b0ff;--up-bg:#142a47;--nor:#98a3b5;--nor-bg:#232d3c;--shadow:none}
+}
+:root[data-theme="dark"]{--bg:#0f141c;--card:#18202c;--ink:#e8edf5;--ink2:#97a5bd;--line:#2a3547;--accent:#6c93ff;--accent-bg:#1d2a4a;
+  --done:#46c987;--done-bg:#12301f;--delay:#f0b44c;--delay-bg:#3a2b0c;--miss:#ff7b81;--miss-bg:#3d1519;--nex:#b98bf0;--nex-bg:#2b1b45;--up:#74b0ff;--up-bg:#142a47;--nor:#98a3b5;--nor-bg:#232d3c;--shadow:none}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;min-height:100%}
+.wrap{max-width:1380px;margin:0 auto;padding:16px}
+header.top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
+h1{font-size:20px;margin:0;letter-spacing:-.2px}
+.sub{color:var(--ink2);font-size:12.5px;margin-top:2px}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 13px;border-radius:8px;font:inherit;font-weight:600;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.sm{padding:5px 10px;font-size:12.5px}
+.btn:disabled{opacity:.5;cursor:default}
+.chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:12px;color:var(--ink2)}
+.chip b{color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+.pad{padding:14px 16px}
+/* upload */
+.drop{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;background:var(--card);cursor:pointer;transition:.15s}
+.drop.over{border-color:var(--accent);background:var(--accent-bg)}
+.drop h3{margin:0 0 4px;font-size:15px}
+.slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-top:12px;text-align:left}
+.slot{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12.5px;background:var(--bg)}
+.slot .t{font-weight:700;font-size:13px;display:flex;justify-content:space-between;gap:8px}
+.slot .ok{color:var(--done)}.slot .no{color:var(--ink2)}
+.slot .f{color:var(--ink2);margin-top:3px;word-break:break-all}
+.msg{margin-top:10px;font-size:13px;color:var(--ink2)}
+.msg.err{color:var(--miss)}
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:14px 0 12px;overflow-x:auto}
+.tab{padding:9px 14px;border:0;background:none;color:var(--ink2);font:inherit;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.tab.on{color:var(--accent);border-color:var(--accent)}
+/* filters */
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+select,input[type=search],input[type=number]{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 9px;font:inherit;min-width:0}
+input[type=search]{min-width:200px}
+input[type=number]{width:84px}
+/* kpis */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:12px 0}
+.kpi{padding:12px 14px;cursor:pointer;border-left:4px solid var(--line);text-align:left;font:inherit;color:inherit;background:var(--card);border-top:1px solid var(--line);border-right:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+.kpi:hover{border-top-color:var(--accent);border-right-color:var(--accent);border-bottom-color:var(--accent)}
+.kpi .l{font-size:12px;color:var(--ink2);font-weight:600}
+.kpi .v{font-size:28px;font-weight:750;letter-spacing:-.5px;line-height:1.15}
+.kpi .s{font-size:11.5px;color:var(--ink2)}
+.kpi.k-done{border-left-color:var(--done)}.kpi.k-delay{border-left-color:var(--delay)}.kpi.k-miss{border-left-color:var(--miss)}
+.kpi.k-ck{border-left-color:#0e8a8a}.kpi.k-nex{border-left-color:var(--nex)}.kpi.k-up{border-left-color:var(--up)}.kpi.k-all{border-left-color:var(--accent)}
+.kpi.sel{outline:2px solid var(--accent)}
+/* badges */
+.b{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.b.DONE{background:var(--done-bg);color:var(--done)}.b.DELAYED{background:var(--delay-bg);color:var(--delay)}
+.b.MISSED{background:var(--miss-bg);color:var(--miss)}.b.NOTEXEC{background:var(--nex-bg);color:var(--nex)}
+.b.UPCOMING{background:var(--up-bg);color:var(--up)}.b.NOREADING{background:var(--nor-bg);color:var(--nor)}
+.sev{font-size:11px;color:var(--ink2);margin-left:4px}
+/* tables */
+.tw{overflow:auto;max-height:70vh;border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:12.8px}
+th{position:sticky;top:0;background:var(--card);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);color:var(--ink2);font-weight:700;white-space:nowrap;cursor:pointer;z-index:1;user-select:none}
+th.ns{cursor:default}
+td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:hover td{background:var(--bg)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.muted{color:var(--ink2)}
+.small{font-size:12px}
+.bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--nor-bg);min-width:120px}
+.bar i{display:block;height:100%}
+.bar .DONE{background:var(--done)}.bar .DELAYED{background:var(--delay)}.bar .MISSED{background:var(--miss)}.bar .NOTEXEC{background:var(--nex)}.bar .UPCOMING{background:var(--up)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+h2{font-size:15px;margin:0 0 8px}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--ink2);margin:6px 0 0}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;background:currentColor;vertical-align:-1px}
+.l-DONE{color:var(--done)}.l-DELAYED{color:var(--delay)}.l-MISSED{color:var(--miss)}.l-NOTEXEC{color:var(--nex)}.l-UPCOMING{color:var(--up)}
+.empty{padding:36px;text-align:center;color:var(--ink2)}
+.rule{padding:10px 12px;border-radius:8px;background:var(--bg);margin:6px 0;border:1px solid var(--line)}
+.hide{display:none!important}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:8px 0 12px}
+.tile{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);text-align:left;font:inherit;color:inherit;cursor:pointer}
+.tile:hover{border-color:var(--accent)}.tile.sel{border-color:var(--accent);background:var(--accent-bg)}
+.tile .l{font-size:12px;font-weight:700;color:var(--ink2)}.tile .v{font-size:24px;font-weight:750;line-height:1.15}.tile .s{font-size:11.5px;color:var(--ink2)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--card);color:var(--ink2);padding:6px 12px;font:inherit;font-weight:600;cursor:pointer}
+.seg button.on{background:var(--accent);color:#fff}
+.proj-row{cursor:pointer}.proj-row.sel td{background:var(--accent-bg)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:8px;font-size:13px;z-index:20;max-width:90vw}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>🛠️ DLCL Maintenance Tracker</h1>
+      <div class="sub" id="subline">Upload the maintenance schedule, logsheet and breakdown history to begin.</div>
+    </div>
+    <div class="chips">
+      <span class="chip hide" id="chipAsOf">Readings as of <b id="asOf"></b></span>
+      <span class="chip hide" id="chipSync"></span>
+      <button class="btn pri hide" id="btnUpload">Upload files</button>
+    </div>
+  </header>
+
+  <div id="noData" class="card empty hide"><h2 style="margin-bottom:6px">No data published yet</h2>The dashboard owner has not uploaded the maintenance files yet. Please check back soon.</div>
+  <section id="uploadPanel" class="card pad hide">
+    <div class="drop" id="drop">
+      <h3>Drop your Excel files here, or click to choose</h3>
+      <div class="muted small"><b>Every quarter:</b> the new maintenance schedule (once, it stays saved). <b>Every day:</b> the Logsheet and the Breakdown/Maintenance history (either or both). The file type is detected from the content, so file names don't matter.</div>
+      <input type="file" id="file" multiple accept=".xlsx,.xls,.xlsm" class="hide">
+      <div class="slots" id="slots"></div>
+    </div>
+    <div class="msg" id="upMsg"></div>
+    <div id="updBox" class="hide" style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+      <h3 style="margin:0 0 4px;font-size:15px">Update "Not executed" services</h3>
+      <div class="muted small" style="margin-bottom:8px">Download the sheet, fill in the meter reading (and date) for services that were already done, add a remark for any that were not, then upload it here. System entries always take priority, and your updates stay saved when you upload new logsheets.</div>
+      <div class="filters"><button class="btn sm" id="btnTpl">Download update sheet</button><button class="btn sm pri" id="btnUpd">Upload filled sheet</button><input type="file" id="updFile" accept=".xlsx,.xls,.xlsm" class="hide"><button class="btn sm" id="btnClrMan">Clear manual updates</button><span class="muted small" id="updInfo"></span></div>
+    </div>
+  </section>
+
+  <main id="app" class="hide">
+    <div class="filters card pad" id="filters"></div>
+    <div class="tabs" id="tabs"></div>
+    <div id="view"></div>
+  </main>
+</div>
+<div class="toast hide" id="toast"></div>
+
+<script>
+/* ===== PM Tracker core: parsing + matching. Pure JS (no DOM). ===== */
+const PMCore = (function () {
+  const MON = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+
+  function normCode(x) {
+    if (x === null || x === undefined) return '';
+    return String(x).trim().replace(/^0+/, '').toUpperCase();
+  }
+  function num(x) {
+    if (x === null || x === undefined || x === '') return null;
+    const n = typeof x === 'number' ? x : parseFloat(String(x).replace(/,/g, ''));
+    return isNaN(n) ? null : n;
+  }
+  // returns epoch-day number (UTC midnight / 86400000) or null
+  function parseDate(x) {
+    if (x === null || x === undefined || x === '') return null;
+    if (x instanceof Date) { if (isNaN(x.getTime())) return null; const y = new Date(x.getTime() + 12 * 36e5); return Math.floor(Date.UTC(y.getFullYear(), y.getMonth(), y.getDate()) / 864e5); }
+    if (typeof x === 'number') { // excel serial
+      if (x > 30000 && x < 80000) return Math.floor((x - 25569));
+      return null;
+    }
+    const s = String(x).trim();
+    let m = s.match(/^(\d{1,2})[-\s\/]([A-Za-z]{3})[a-z]*[-\s\/,]*(\d{4})/);
+    if (m) { const mo = MON[m[2].toLowerCase()]; if (mo !== undefined) return Math.floor(Date.UTC(+m[3], mo, +m[1]) / 864e5); }
+    m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return Math.floor(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 864e5);
+    m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+    if (m) return Math.floor(Date.UTC(+m[3], +m[2] - 1, +m[1]) / 864e5);
+    return null;
+  }
+  function dayToStr(d) {
+    if (d === null || d === undefined) return '';
+    const dt = new Date(d * 864e5);
+    const mn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return String(dt.getUTCDate()).padStart(2, '0') + ' ' + mn[dt.getUTCMonth()] + ' ' + dt.getUTCFullYear();
+  }
+
+  /* ---------- file detection ---------- */
+  function detect(wb) {
+    // wb = {name, sheets:[{name, rows}]}
+    for (const sh of wb.sheets) {
+      const t0 = sh.rows.slice(0, 8).map(r => (r || []).join('|').toUpperCase()).join('\n');
+      if (t0.includes('CARRIED OUT AT (READING)')) return 'update';
+    }
+    for (const sh of wb.sheets) {
+      const t1 = sh.rows.slice(0, 8).map(r => (r || []).join('|').toUpperCase()).join('\n');
+      if (t1.includes('AUDIT CODE') && t1.includes('CHECKLIST')) return 'audit';
+    }
+    for (const sh of wb.sheets) {
+      const top = sh.rows.slice(0, 15);
+      const flat = top.map(r => (r || []).join('|').toUpperCase()).join('\n');
+      if (flat.includes('MAINTENANCE SCHEDULE') || (flat.includes('ASSET CODE') && flat.includes('DUE HMR'))) return 'schedule';
+      if (flat.includes('START METER READING') || flat.includes('REPORT : LOGSHEET')) return 'logsheet';
+      if (flat.includes('BREAKDOWN TYPE') || flat.includes('REPORT : BREAKDOWN')) return 'breakdown';
+    }
+    return null;
+  }
+
+  function findHeaderRow(rows, mustHave) {
+    for (let i = 0; i < Math.min(rows.length, 40); i++) {
+      const r = (rows[i] || []).map(c => String(c === null || c === undefined ? '' : c).trim().toUpperCase());
+      if (mustHave.every(h => r.includes(h))) return i;
+    }
+    return -1;
+  }
+
+  /* ---------- schedule ---------- */
+  // Uses the 2nd sheet (user's own asset list) if the workbook has one, else 1st sheet.
+  function parseOne(wb, sheet) {
+    const rows = sheet.rows;
+    let quarter = '';
+    for (let i = 0; i < Math.min(rows.length, 15); i++) {
+      for (const c of rows[i] || []) {
+        const m = String(c || '').match(/QUARTER\s*:\s*([A-Za-z0-9_]+)/i);
+        if (m) { quarter = m[1].toUpperCase(); }
+      }
+    }
+    if (!quarter) { const m = wb.name.match(/Q[1-4]/i); quarter = m ? m[0].toUpperCase() : 'Q?'; }
+    const h = findHeaderRow(rows, ['ASSET CODE']);
+    if (h < 0) return { quarter, slots: [], assets: [], sheetName: sheet.name };
+    const hdr = rows[h].map(c => String(c || '').trim().toUpperCase());
+    const ci = n => hdr.indexOf(n);
+    const cAsset = ci('ASSET CODE'), cDesc = ci('ASSET DESCRIPTION'), cProj = ci('PROJECT DESCRIPTION');
+    const cOpen = hdr.findIndex(x => x.startsWith('OPENING')), cEst = hdr.findIndex(x => x.startsWith('ESTIMATED'));
+    const cCl = ci('CLUSTER'), cJob = ci('JOB CODE');
+    const firstType = hdr.indexOf('TYPE');
+    const slots = [], assets = [];
+    for (let i = h + 1; i < rows.length; i++) {
+      const r = rows[i]; if (!r) continue;
+      const code = r[cAsset];
+      if (code === null || code === undefined || String(code).trim() === '') continue;
+      if (/report generated/i.test(String(code))) continue;
+      const a = {
+        key: normCode(code), code: String(code).trim(), desc: r[cDesc] || '', project: r[cProj] || '',
+        opening: num(r[cOpen]), est: num(r[cEst]), cluster: cCl >= 0 ? (r[cCl] || '') : '', job: cJob >= 0 ? (r[cJob] || '') : ''
+      };
+      assets.push(a);
+      for (let c = firstType; c + 1 < hdr.length; c += 3) {
+        if (hdr[c] !== 'TYPE') break;
+        const t = r[c];
+        if (t === null || t === undefined || String(t).trim() === '') continue;
+        const due = num(r[c + 1]);
+        if (due === null) continue;
+        slots.push({ asset: a.key, type: String(t).trim(), due, carried: num(r[c + 2]), quarter });
+      }
+    }
+    return { quarter, slots, assets, sheetName: sheet.name, uploaded: Date.now() };
+  }
+
+  // The MS (first) sheet is the master. The second sheet lists the assets that are yours. For each of your assets the
+  // MS sheet row is used when present (so edits made on the MS sheet are picked up), otherwise the second sheet's row.
+  function parseSchedule(wb) {
+    if (wb.sheets.length < 2) return parseOne(wb, wb.sheets[0]);
+    const mine = parseOne(wb, wb.sheets[1]), master = parseOne(wb, wb.sheets[0]);
+    const mAssets = new Map(master.assets.map(a => [a.key, a]));
+    const sig = (slots) => slots.map(s => s.type + '@' + s.due + '#' + (s.carried === null ? '' : s.carried)).join(',');
+    const mSlots = new Map(), oSlots = new Map();
+    master.slots.forEach(s => { if (!mSlots.has(s.asset)) mSlots.set(s.asset, []); mSlots.get(s.asset).push(s); });
+    mine.slots.forEach(s => { if (!oSlots.has(s.asset)) oSlots.set(s.asset, []); oSlots.get(s.asset).push(s); });
+    const assets = [], slots = [], changed = [];
+    mine.assets.forEach(a => {
+      if (mAssets.has(a.key)) {
+        const m = mAssets.get(a.key), ms = mSlots.get(a.key) || [], os = oSlots.get(a.key) || [];
+        if (sig(ms) !== sig(os) || m.opening !== a.opening) changed.push(a.code);
+        assets.push(Object.assign({}, a, m, { cluster: m.cluster || a.cluster }));
+        ms.forEach(s => slots.push(s));
+      } else { assets.push(a); (oSlots.get(a.key) || []).forEach(s => slots.push(s)); }
+    });
+    return { quarter: mine.quarter, slots, assets, sheetName: wb.sheets[0].name + ' (master) + ' + wb.sheets[1].name, uploaded: Date.now(), changedVsList: changed };
+  }
+
+  /* ---------- publish (audit) report ---------- */
+  function ckHours(name) {
+    const m = String(name || '').trim().match(/(?:^|[\s\-])(\d{2,5})\s*(?:H|HRS?|HOURS?|KM)\s*$/i);
+    return m ? +m[1] : null;
+  }
+  function parseAudit(wb) {
+    const rows = wb.sheets[0].rows;
+    const out = { rows: [], min: null, max: null, total: 0 };
+    const h = findHeaderRow(rows, ['AUDIT CODE', 'CHECKLIST']);
+    if (h < 0) return out;
+    const hdr = rows[h].map(c => String(c || '').trim().toUpperCase());
+    const cA = hdr.indexOf('ASSET CODE'), cC = hdr.indexOf('CHECKLIST'), cD = hdr.indexOf('PUBLISHED ON');
+    for (let i = h + 1; i < rows.length; i++) {
+      const r = rows[i]; if (!r) continue;
+      const k = normCode(r[cA]), d = parseDate(r[cD]);
+      if (!k || d === null) continue;
+      out.total++;
+      if (out.min === null || d < out.min) out.min = d;
+      if (out.max === null || d > out.max) out.max = d;
+      const hh = ckHours(r[cC]);
+      if (hh !== null) out.rows.push({ k, d, h: hh, c: String(r[cC]).trim() });
+    }
+    return out;
+  }
+  function ckShort(name) { const p = String(name || '').split(' - '); return p.slice(-1)[0].trim(); }
+  function ckPen(h, N, classes) {
+    if (h === N || (classes && classes.includes(h))) return 0;
+    if (h > N && N > 0 && h % N === 0) return 5;
+    return 60;
+  }
+  // Compare executed maintenance with published checklists. Mutates rows (ck* fields); returns orphan checklists.
+  function checklistMatch(rows, audits, assets, o) {
+    const W = o.ckWin;
+    rows.forEach(r => { r.ckSt = ''; r.ckDate = null; r.ckName = ''; r.ckOff = null; r.ckNote = ''; });
+    if (!audits || !audits.length) return [];
+    const byAudit = new Map(), byRow = new Map();
+    audits.forEach((a, i) => { if (!byAudit.has(a.k)) byAudit.set(a.k, []); byAudit.get(a.k).push(Object.assign({ i }, a)); });
+    rows.forEach(r => { if (!byRow.has(r.key)) byRow.set(r.key, []); byRow.get(r.key).push(r); });
+    const used = new Set();
+    byRow.forEach((rs, k) => {
+      const cs = byAudit.get(k) || [];
+      const done = rs.filter(r => r.carriedAt !== null && r.carriedAt !== undefined);
+      const cands = [];
+      done.forEach((r, ri) => {
+        if (r.doneDate === null || r.doneDate === undefined) return;
+        const cl = serviceClasses({ type: 'MAINTENANCE', defect: r.doneType || '' });
+        r._cl = cl;
+        cs.forEach((c, ci) => {
+          const diff = c.d - r.doneDate;
+          if (Math.abs(diff) > W) return;
+          const pen = ckPen(c.h, r.interval, cl);
+          cands.push({ ri, ci, diff, pen, cost: Math.abs(diff) + pen });
+        });
+      });
+      cands.sort((a, b) => a.cost - b.cost);
+      const uR = new Set(), uC = new Set();
+      cands.forEach(x => {
+        if (uR.has(x.ri) || uC.has(x.ci)) return;
+        uR.add(x.ri); uC.add(x.ci);
+        const r = done[x.ri], c = cs[x.ci];
+        r.ckSt = x.pen <= 5 ? 'OK' : 'DIFF'; r.ckDate = c.d; r.ckName = c.c; r.ckOff = x.diff;
+        if (x.pen > 5) r.ckNote = 'Checklist ' + c.h + ' H vs service ' + r.interval;
+        used.add(c.i);
+      });
+      done.forEach(r => {
+        if (r.ckSt || r.doneDate === null || r.doneDate === undefined) return;
+        r.ckSt = cs.length ? 'MISSING' : 'NOCL';
+      });
+      // orphans -> possible match for not executed services
+      const ne = rs.filter(r => r.status === 'NOTEXEC' && !r.ckSt);
+      const orph = cs.filter(c => !used.has(c.i));
+      const c2 = [];
+      ne.forEach((r, ri) => orph.forEach((c, ci) => { const p = ckPen(c.h, r.interval, null); if (p <= 5) c2.push({ ri, ci, cost: p * 10 + Math.abs(c.h - r.interval) / 10 - c.d / 1e5 }); }));
+      c2.sort((a, b) => a.cost - b.cost);
+      const uR2 = new Set(), uC2 = new Set();
+      c2.forEach(x => {
+        if (uR2.has(x.ri) || uC2.has(x.ci)) return;
+        uR2.add(x.ri); uC2.add(x.ci);
+        const r = ne[x.ri], c = orph[x.ci];
+        r.ckSt = 'FOUND'; r.ckDate = c.d; r.ckName = c.c;
+        c._link = 'Not executed ' + r.type + ' @ ' + r.due;
+      });
+    });
+    const out = [];
+    byAudit.forEach((cs, k) => cs.forEach(c => {
+      if (used.has(c.i)) return;
+      const a = assets.get ? assets.get(k) : null;
+      out.push({ key: k, asset: a ? a.code : k, desc: a ? a.desc : '', project: a ? a.project : '', cluster: a ? a.cluster : '', date: c.d, h: c.h, name: c.c, link: c._link || '' });
+    }));
+    return out;
+  }
+
+  /* ---------- not-executed update sheet ---------- */
+  function parseUpdate(wb) {
+    const sh = wb.sheets[0], rows = sh.rows;
+    const h = findHeaderRow(rows, ['ASSET CODE', 'SERVICE']);
+    const out = [];
+    if (h < 0) return out;
+    const hdr = rows[h].map(c => String(c || '').trim().toUpperCase());
+    const cA = hdr.indexOf('ASSET CODE'), cS = hdr.indexOf('SERVICE'), cR = hdr.indexOf('CARRIED OUT AT (READING)'), cD = hdr.indexOf('DONE DATE'), cM = hdr.indexOf('REMARKS');
+    for (let i = h + 1; i < rows.length; i++) {
+      const r = rows[i]; if (!r) continue;
+      const k = normCode(r[cA]), type = String(r[cS] === null || r[cS] === undefined ? '' : r[cS]).trim();
+      if (!k || !type) continue;
+      const reading = cR >= 0 ? num(r[cR]) : null;
+      const date = cD >= 0 ? parseDate(r[cD]) : null;
+      const remarks = cM >= 0 && r[cM] !== null && r[cM] !== undefined ? String(r[cM]).trim().slice(0, 200) : '';
+      if (reading === null && !remarks) continue;
+      out.push({ id: k + '||' + type, reading, date, remarks });
+    }
+    return out;
+  }
+
+  /* ---------- logsheet ---------- */
+  function parseLog(wb) {
+    const rows = wb.sheets[0].rows;
+    const h = findHeaderRow(rows, ['ASSET CODE', 'LOG DATE']);
+    if (h < 0) return { logs: [], reportDate: null };
+    const hdr = rows[h].map(c => String(c || '').trim().toUpperCase());
+    const ix = n => hdr.indexOf(n);
+    const cA = ix('ASSET CODE'), cD = ix('LOG DATE'), cS = ix('START METER READING'), cE = ix('END METER READING'),
+      cR = ix('HRS KM RUN'), cT = ix('METER TYPE'), cB = ix('BREAKDOWN HOUR'), cW = ix('WORK HOURS'), cI = ix('IDLE HOUR'), cJ = ix('JOB CODE');
+    const logs = [];
+    let reportDate = null;
+    for (let i = h + 1; i < rows.length; i++) {
+      const r = rows[i]; if (!r) continue;
+      const first = String(r[0] || '');
+      const mm = first.match(/Report Generated On\s+(\d{1,2}-[A-Za-z]{3}-\d{4})/i);
+      if (mm) { reportDate = parseDate(mm[1]); continue; }
+      const d = parseDate(r[cD]); const key = normCode(r[cA]);
+      if (d === null || !key) continue;
+      logs.push({ k: key, d, s: num(r[cS]), e: num(r[cE]), run: num(r[cR]) || 0, mt: r[cT], bd: num(r[cB]) || 0, wk: num(r[cW]) || 0, job: r[cJ] });
+    }
+    return { logs, reportDate };
+  }
+
+  /* ---------- breakdown / maintenance history ---------- */
+  function parseBreakdown(wb) {
+    const rows = wb.sheets[0].rows;
+    const h = findHeaderRow(rows, ['ASSET CODE', 'BREAKDOWN TYPE']);
+    if (h < 0) return { entries: [], reportDate: null };
+    const hdr = rows[h].map(c => String(c || '').trim().toUpperCase());
+    const ix = n => hdr.indexOf(n);
+    const g = (r, n) => { const i = ix(n); return i >= 0 ? r[i] : null; };
+    const entries = [];
+    let reportDate = null;
+    for (let i = h + 1; i < rows.length; i++) {
+      const r = rows[i]; if (!r) continue;
+      const first = String(r[0] || '');
+      const mm = first.match(/Report Generated On\s+(\d{1,2}-[A-Za-z]{3}-\d{4})/i);
+      if (mm) { reportDate = parseDate(mm[1]); continue; }
+      const key = normCode(g(r, 'ASSET CODE')); if (!key) continue;
+      const defect = String(g(r, 'DEFECT DESCRIPTION') || '').trim();
+      entries.push({
+        k: key, type: String(g(r, 'BREAKDOWN TYPE') || '').trim().toUpperCase(), date: parseDate(g(r, 'BREAKDOWN DATE')),
+        defect, cause: String(g(r, 'BREAKDOWN CAUSE') || ''), work: String(g(r, 'WORKDONE') || ''),
+        by: String(g(r, 'WORKDONE BY') || ''), reading: num(g(r, 'METER READING')), pm: String(g(r, 'PM INCHARGENAME') || ''),
+        ref: g(r, 'BREAKDOWN REFERENCE NO'), job: String(g(r, 'JOB CODE') || '')
+      });
+    }
+    return { entries, reportDate };
+  }
+
+  /* ---------- service class parsing ---------- */
+  // Is this entry a periodic servicing? returns array of interval numbers (e.g. [250,300]) or null
+  function serviceClasses(e) {
+    if (e.type !== 'MAINTENANCE') return null;
+    const t = e.defect;
+    const m = t.match(/(\d{2,5})(?:\s*\/\s*(\d{2,5}))?\s*(?:hrs?|hours?|kms?)\b.*serv/i);
+    if (m) { const a = [+m[1]]; if (m[2]) a.push(+m[2]); return a; }
+    return null;
+  }
+
+  /* ---------- analysis ---------- */
+  const DEFAULTS = { delayHrs: 20, missHrs: 50, soonHrs: 100, attnHrs: 10, ckWin: 20, earlyWin: 100, lateWin: 150, trendDays: 30 };
+
+  function classPenalty(N, classes) {
+    // N: slot interval; classes: entry classes (may be empty => unknown)
+    if (!classes || !classes.length) return 60;
+    if (classes.includes(N)) return 0;
+    const mx = Math.max(...classes);
+    if (mx > N && mx % N === 0) return 25; // bigger service covers the smaller one
+    if (classes.some(c => c > N)) return 40;
+    if (mx < N) return 120; // lower service logged against higher scheduled service
+    return 90;
+  }
+
+  function classify(r, o) {
+    r.sev = ''; r.soon = false; r.near = false; r.remaining = null; r.over = null;
+    if (r.note && r.note.indexOf('Check data') === 0) r.note = '';
+    if (r.carriedAt !== null && r.carriedAt !== undefined) {
+      r.over = r.carriedAt - r.due;
+      r.status = r.over > o.missHrs ? 'MISSED' : r.over > o.delayHrs ? 'DELAYED' : 'DONE';
+    } else if (r.current === null || r.current === undefined) {
+      r.status = 'NOREADING';
+    } else if (r.current >= r.due) {
+      r.over = r.current - r.due;
+      r.status = 'NOTEXEC';
+      r.sev = r.over > o.missHrs ? 'MISSED' : r.over > o.delayHrs ? 'DELAYED' : 'RECENT';
+      if (r.over > Math.max(1000, 5 * (r.interval || 0))) r.note = 'Check data: reading is ' + Math.round(r.over) + ' beyond due (wrong due reading or meter reset?)';
+    } else {
+      r.remaining = r.due - r.current;
+      r.status = 'UPCOMING';
+      r.soon = r.remaining <= o.soonHrs;
+      r.near = r.remaining <= o.attnHrs;
+    }
+    return r;
+  }
+
+  function analyze(input, optsIn) {
+    const o = Object.assign({}, DEFAULTS, optsIn || {});
+    const sched = input.schedules || [], logs = input.logs || [], entries = input.entries || [];
+    // --- assets & slots (dedupe by asset+type; keep latest quarter's due) ---
+    const assets = new Map();
+    const slotMap = new Map();
+    const qOrder = q => { const m = /Q(\d)/.exec(q); return m ? +m[1] : 0; };
+    const qKey = q => { const m = /Q(\d).*?FY(\d+)/i.exec(q || ''); return m ? (+m[2]) * 10 + (+m[1]) : qOrder(q); };
+    // the later quarter wins where the same service appears in more than one schedule (its due readings are the current ones)
+    const ordered = sched.slice().sort((a, b) => qKey(a.quarter) - qKey(b.quarter));
+    ordered.forEach(sc => {
+      sc.assets.forEach(a => { assets.set(a.key, Object.assign({}, assets.get(a.key) || {}, a)); });
+      sc.slots.forEach(s => {
+        const k = s.asset + '||' + s.type;
+        const prev = slotMap.get(k);
+        if (prev) { prev.due = s.due; prev.lastQuarter = s.quarter; if (s.carried !== null) prev.carriedSheet = s.carried; }
+        else slotMap.set(k, { asset: s.asset, type: s.type, due: s.due, firstQuarter: s.quarter, lastQuarter: s.quarter, carriedSheet: s.carried });
+      });
+    });
+    // --- current reading & usage trend per asset from logs ---
+    const byAssetLogs = new Map();
+    let asOf = null;
+    logs.forEach(l => { if (!byAssetLogs.has(l.k)) byAssetLogs.set(l.k, []); byAssetLogs.get(l.k).push(l); if (asOf === null || l.d > asOf) asOf = l.d; });
+    const cur = new Map();
+    byAssetLogs.forEach((arr, k) => {
+      arr.sort((a, b) => a.d - b.d);
+      let last = null;
+      for (let i = arr.length - 1; i >= 0; i--) { if (arr[i].e !== null && arr[i].e > 0) { last = arr[i]; break; } }
+      const from = (asOf || 0) - o.trendDays + 1;
+      let run = 0, days = 0;
+      arr.forEach(l => { if (l.d >= from) { run += l.run; days++; } });
+      cur.set(k, { reading: last ? last.e : null, date: last ? last.d : null, avgDaily: run / o.trendDays });
+    });
+    // --- PM entries per asset ---
+    const pmByAsset = new Map(), otherByAsset = new Map();
+    entries.forEach((e, idx) => {
+      e.idx = idx;
+      const cl = serviceClasses(e);
+      e.classes = cl;
+      if (cl && e.reading !== null) { if (!pmByAsset.has(e.k)) pmByAsset.set(e.k, []); pmByAsset.get(e.k).push(e); }
+    });
+    // fallback current reading from entries
+    pmByAsset.forEach((arr, k) => {
+      const mx = Math.max(...arr.map(e => e.reading));
+      if (!cur.has(k)) cur.set(k, { reading: mx, date: null, avgDaily: 0, fromEntry: true });
+    });
+    entries.forEach(e => {
+      if (e.reading !== null && !cur.has(e.k) && assets.has(e.k)) cur.set(e.k, { reading: e.reading, date: e.date, avgDaily: 0, fromEntry: true });
+    });
+
+    // --- matching per asset ---
+    const slotsByAsset = new Map();
+    slotMap.forEach(s => { if (!slotsByAsset.has(s.asset)) slotsByAsset.set(s.asset, []); slotsByAsset.get(s.asset).push(s); });
+    const matchedEntry = new Set();
+    slotsByAsset.forEach((slots, k) => {
+      const ents = pmByAsset.get(k) || [];
+      const cands = [];
+      slots.forEach((s, si) => {
+        const N = parseInt(s.type, 10) || 0;
+        const win = Math.max(o.lateWin, 0.15 * N), ewin = Math.max(o.earlyWin, 0.1 * N);
+        ents.forEach((e, ei) => {
+          const diff = e.reading - s.due; // + = late
+          if (diff > win || diff < -ewin) return;
+          const cost = Math.abs(diff) + classPenalty(N, e.classes) + (diff < 0 ? 5 : 0);
+          cands.push({ si, ei, cost, diff });
+        });
+      });
+      cands.sort((a, b) => a.cost - b.cost);
+      const usedS = new Set(), usedE = new Set();
+      cands.forEach(c => {
+        if (usedS.has(c.si) || usedE.has(c.ei)) return;
+        usedS.add(c.si); usedE.add(c.ei);
+        slots[c.si].entry = ents[c.ei];
+        matchedEntry.add(ents[c.ei].idx);
+      });
+    });
+
+    // --- build rows (classification is separate so thresholds can change live) ---
+    const rows = [];
+    slotMap.forEach(s => {
+      const a = assets.get(s.asset) || { key: s.asset, code: s.asset, desc: '', project: '', cluster: '' };
+      const c = cur.get(s.asset) || { reading: null, date: null, avgDaily: 0 };
+      const row = {
+        asset: a.code, key: s.asset, desc: a.desc, project: a.project, cluster: a.cluster, job: a.job,
+        type: s.type, interval: parseInt(s.type, 10) || 0, due: s.due, firstQuarter: s.firstQuarter, lastQuarter: s.lastQuarter,
+        current: c.reading, currentDate: c.date, avgDaily: Math.round(c.avgDaily * 100) / 100, readingSrc: c.fromEntry ? 'entry' : (c.reading === null ? '' : 'log'),
+        carriedAt: null, doneDate: null, doneType: '', note: '', eta: null
+      };
+      if (s.entry) {
+        const e = s.entry;
+        row.carriedAt = e.reading; row.doneDate = e.date; row.doneType = e.defect;
+        const cl = e.classes || [];
+        if (cl.length && !cl.includes(row.interval) && Math.max(...cl) < row.interval) row.note = 'Logged as ' + cl.join('/') + ' hrs service vs ' + row.interval + ' scheduled';
+      }
+      if (!s.entry && s.carriedSheet !== null && s.carriedSheet !== undefined) {
+        row.carriedAt = s.carriedSheet; row.fromSched = true; row.note = 'From maintenance schedule: carried out at ' + s.carriedSheet;
+      }
+      if (row.carriedAt === null && c.reading !== null && c.reading < s.due && c.avgDaily > 0.05 && asOf !== null) row.eta = Math.round(asOf + (s.due - c.reading) / c.avgDaily);
+      classify(row, o);
+      rows.push(row);
+    });
+    rows.sort((a, b) => (a.project || '').localeCompare(b.project || '') || a.asset.localeCompare(b.asset) || a.due - b.due);
+
+    // --- unmatched PM entries (servicing entries not matched to any scheduled slot) ---
+    const unmatched = [];
+    entries.forEach(e => {
+      if (!assets.has(e.k) || e.type !== 'MAINTENANCE' || !e.classes || e.reading === null) return;
+      if (matchedEntry.has(e.idx)) return;
+      const a = assets.get(e.k);
+      unmatched.push({ asset: a.code, desc: a.desc, project: a.project, date: e.date, reading: e.reading, defect: e.defect });
+    });
+    // --- asset summary ---
+    const assetList = [];
+    assets.forEach(a => {
+      const c = cur.get(a.key) || {};
+      assetList.push({ code: a.code, key: a.key, desc: a.desc, project: a.project, cluster: a.cluster, current: c.reading ?? null, currentDate: c.date ?? null, avgDaily: c.avgDaily || 0, hasLog: byAssetLogs.has(a.key) });
+    });
+    const counts = { logRows: logs.length, entryRows: entries.length, pmEntries: [...pmByAsset.values()].reduce((s, x) => s + x.length, 0) };
+    return { rows, unmatched, assets: assetList, asOf, opts: o, counts };
+  }
+
+  return { classify, parseAudit, checklistMatch, ckShort, ckHours, parseUpdate, parseSchedule, parseLog, parseBreakdown, detect, analyze, dayToStr, parseDate, normCode, DEFAULTS, serviceClasses };
+})();
+if (typeof module !== 'undefined') module.exports = PMCore;
+
+</script>
+<script>
+(function(){
+'use strict';
+const P = PMCore;
+const $ = id => document.getElementById(id);
+const esc = s => String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => n === null || n === undefined ? '–' : (Math.abs(n - Math.round(n)) < 0.05 ? Math.round(n).toLocaleString('en-IN') : n.toLocaleString('en-IN', {maximumFractionDigits: 1}));
+const D = P.dayToStr;
+const STATUS = {DONE:'Completed', DELAYED:'Delayed', MISSED:'Missed', NOTEXEC:'Not executed', UPCOMING:'Upcoming', NOREADING:'No meter data'};
+
+const S = {
+  data: null,          // {rows, unmatched, assets, asOf, counts, files}
+  rows: [],            // classified rows
+  savedSched: [],      // schedules from storage [{quarter, assets, slots}]
+  pending: {sched: [], log: null, bd: null, au: null, names: {}},
+  f: {cluster: '', project: '', equip: '', q: '', status: '', ck: '', period: 'all', from: '', to: ''},
+  opts: Object.assign({}, P.DEFAULTS),
+  tab: 'overview', sort: {col: 'due', dir: 1}, shown: 300, version: 0, meta: null, busy: false, over: {}, owner: false, userKnown: false, store: null, userPanel: false, names: {}, planMode: 'week', planSel: null
+};
+try { const o = JSON.parse(localStorage.getItem('pm_opts') || 'null'); if (o) { delete o.ckWin; if (o.ckWinV2 !== undefined) o.ckWin = o.ckWinV2; Object.assign(S.opts, o); } } catch (e) {}
+
+let db = null, dl = null;
+
+function toast(msg, ms) { const t = $('toast'); t.textContent = msg; t.classList.remove('hide'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add('hide'), ms || 3500); }
+
+/* ---------------- storage (gzip+base64 chunks) ---------------- */
+function b64(buf) { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }
+function unb64(s) { const bin = atob(s); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
+async function pack(obj) {
+  const json = JSON.stringify(obj);
+  if (typeof CompressionStream !== 'undefined') {
+    const st = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
+    return 'g:' + b64(await new Response(st).arrayBuffer());
+  }
+  return 'j:' + json;
+}
+async function unpack(str) {
+  if (str.startsWith('g:')) {
+    const st = new Blob([unb64(str.slice(2))]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return JSON.parse(await new Response(st).text());
+  }
+  return JSON.parse(str.slice(2));
+}
+const CH = 180000;
+async function dbWriteBlob(name, str) {
+  const n = Math.max(1, Math.ceil(str.length / CH));
+  for (let i = 0; i < n; i++) await db.doc('pm/' + name + '_' + i).set({s: str.slice(i * CH, (i + 1) * CH)});
+  return n;
+}
+async function dbReadBlob(name, n) {
+  let out = '';
+  for (let i = 0; i < n; i++) { const sn = await db.doc('pm/' + name + '_' + i).get(); if (!sn.exists) throw new Error('missing chunk'); out += sn.data().s; }
+  return out;
+}
+
+async function persist() {
+  const version = Date.now();
+  S.version = version;
+  const slim = {rows: S.data.rows, unmatched: S.data.unmatched, assets: S.data.assets, asOf: S.data.asOf, counts: S.data.counts, files: S.data.files, audits: S.data.audits || []};
+  const rStr = await pack(slim), sStr = await pack(S.savedSched), oStr = await pack(S.over), tStr = await pack(S.store || {});
+  const meta = {version, updatedAt: new Date().toISOString(), asOf: S.data.asOf, files: S.data.files, quarters: S.savedSched.map(s => s.quarter)};
+  try { localStorage.setItem('pm_cache', JSON.stringify({meta, r: rStr, s: sStr, o: oStr, t: tStr})); } catch (e) {}
+  if (!db) return {shared: false, why: 'Team sync is not available in this view'};
+  try {
+    meta.rParts = await dbWriteBlob('res', rStr);
+    meta.sParts = await dbWriteBlob('sched', sStr);
+    meta.oParts = await dbWriteBlob('ovr', oStr);
+    meta.tParts = await dbWriteBlob('store', tStr);
+    await db.doc('pm/meta').set(meta);
+    S.meta = meta;
+    return {shared: true};
+  } catch (e) {
+    return {shared: false, why: (e && e.code === 'invalid_argument') ? 'You do not have permission to publish data to the team, so this was saved on this device only' : 'Could not save to the team store (' + ((e && (e.code || e.message)) || 'error') + ')'};
+  }
+}
+
+async function loadFromPacked(meta, rStr, sStr, oStr, tStr, source) {
+  const data = await unpack(rStr);
+  S.savedSched = await unpack(sStr);
+  S.over = oStr ? await unpack(oStr) : {};
+  S.store = tStr ? await unpack(tStr) : null;
+  S.data = data; S.meta = meta; S.version = meta.version;
+  reclassify();
+  showApp();
+  renderSync(source);
+}
+async function loadFromDb(meta) {
+  try {
+    const rStr = await dbReadBlob('res', meta.rParts), sStr = await dbReadBlob('sched', meta.sParts);
+    const oStr = meta.oParts ? await dbReadBlob('ovr', meta.oParts) : null;
+    const tStr = (S.owner && meta.tParts) ? await dbReadBlob('store', meta.tParts) : null;
+    await loadFromPacked(meta, rStr, sStr, oStr, tStr, 'team');
+  } catch (e) { console.warn('load from db failed', e); }
+}
+
+/* ---------------- file reading ---------------- */
+function readFile(file) {
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => {
+      try {
+        const wb = XLSX.read(fr.result, {type: 'array', cellDates: true});
+        const sheets = wb.SheetNames.map(n => ({name: n, rows: XLSX.utils.sheet_to_json(wb.Sheets[n], {header: 1, raw: true, defval: null})}));
+        res({name: file.name, sheets});
+      } catch (e) { rej(e); }
+    };
+    fr.onerror = () => rej(fr.error);
+    fr.readAsArrayBuffer(file);
+  });
+}
+const tick = () => new Promise(r => setTimeout(r, 30));
+
+function emptyStore() { return {logs: {}, entries: [], hasLog: false, hasBd: false, logMax: null, bdMax: null}; }
+async function ensureStore() {
+  if (S.store && S.store.logs) return;
+  if (db && S.meta && S.meta.tParts) { try { S.store = await unpack(await dbReadBlob('store', S.meta.tParts)); } catch (e) { console.warn('store load failed', e); } }
+  if (!S.store || !S.store.logs) S.store = emptyStore();
+}
+// Legacy data (published before the saved-store version): rebuild a working store from the saved results
+function bootstrapStore() {
+  const st = emptyStore(), d = S.data;
+  d.assets.forEach(a => {
+    if (a.current === null || a.current === undefined) return;
+    const day = a.currentDate || d.asOf, recent = day >= d.asOf - (S.opts.trendDays - 1);
+    (st.logs[a.key] = st.logs[a.key] || {})[day] = [a.current, recent ? Math.round((a.avgDaily || 0) * S.opts.trendDays * 100) / 100 : 0];
+  });
+  d.rows.forEach(r => { if (r.carriedAt !== null && r.carriedAt !== undefined && r.doneDate && !r.fromSched) st.entries.push({k: r.key, type: 'MAINTENANCE', date: r.doneDate, reading: r.carriedAt, defect: r.doneType || ''}); });
+  st.audits = (d.audits || []).slice(); st.hasAu = st.audits.length > 0; st.auMax = d.files && d.files.auThrough || null;
+  st.hasLog = true; st.hasBd = true; st.logMax = d.asOf; st.bdMax = st.entries.reduce((m, e) => Math.max(m, e.date || 0), 0) || null;
+  return st;
+}
+function mergeLogs(store, logs) {
+  let mn = Infinity, mx = -Infinity; const agg = new Map();
+  logs.forEach(l => {
+    if (l.d < mn) mn = l.d; if (l.d > mx) mx = l.d;
+    const k = l.k + '|' + l.d; let a = agg.get(k);
+    if (!a) { a = {k: l.k, d: l.d, e: null, run: 0}; agg.set(k, a); }
+    a.run += l.run || 0; if (l.e !== null && l.e > 0 && (a.e === null || l.e > a.e)) a.e = l.e;
+  });
+  if (!agg.size) return;
+  Object.keys(store.logs).forEach(k => Object.keys(store.logs[k]).forEach(d => { if (+d >= mn && +d <= mx) delete store.logs[k][d]; }));
+  agg.forEach(a => { (store.logs[a.k] = store.logs[a.k] || {})[a.d] = [a.e, Math.round(a.run * 100) / 100]; });
+  Object.keys(store.logs).forEach(k => { const ds = Object.keys(store.logs[k]).map(Number).sort((a, b) => b - a); ds.slice(60).forEach(d => delete store.logs[k][d]); if (!ds.length) delete store.logs[k]; });
+  store.hasLog = true; store.logMax = Math.max(store.logMax || 0, mx);
+}
+function mergeEntries(store, entries) {
+  let mn = Infinity, mx = -Infinity;
+  entries.forEach(e => { if (e.date !== null) { mn = Math.min(mn, e.date); mx = Math.max(mx, e.date); } });
+  const keep = store.entries.filter(e => !(e.date !== null && e.date >= mn && e.date <= mx));
+  const add = entries.filter(e => e.type === 'MAINTENANCE' && e.reading !== null && e.date !== null && P.serviceClasses(e)).map(e => ({k: e.k, type: 'MAINTENANCE', date: e.date, reading: e.reading, defect: e.defect}));
+  store.entries = keep.concat(add); store.hasBd = true;
+  store.bdMax = store.entries.reduce((m, e) => Math.max(m, e.date || 0), mx > 0 ? mx : 0) || null;
+}
+function mergeAudits(store, au) {
+  const keep = (store.audits || []).filter(a => !(au.min !== null && a.d >= au.min && a.d <= au.max));
+  store.audits = keep.concat(au.rows); store.hasAu = true;
+  store.auMax = Math.max(store.auMax || 0, au.max || 0) || null;
+}
+function storeLogs(store) {
+  const out = [];
+  Object.keys(store.logs).forEach(k => Object.keys(store.logs[k]).forEach(d => { const v = store.logs[k][d]; out.push({k, d: +d, e: v[0], s: null, run: v[1] || 0}); }));
+  return out;
+}
+
+async function handleFiles(files) {
+  if (S.busy) return;
+  S.busy = true;
+  const msg = $('upMsg'); msg.className = 'msg';
+  const updates = []; let addedMain = false;
+  try {
+    for (const f of files) {
+      msg.textContent = 'Reading ' + f.name + ' …'; await tick();
+      let wb; try { wb = await readFile(f); } catch (e) { msg.className = 'msg err'; msg.textContent = 'Could not read ' + f.name + ' – is it a valid Excel file?'; continue; }
+      const t = P.detect(wb);
+      if (t === 'schedule') {
+        const sc = P.parseSchedule(wb);
+        S.pending.sched = S.pending.sched.filter(x => x.quarter !== sc.quarter); S.pending.sched.push(sc); S.names['s:' + sc.quarter] = f.name; addedMain = true;
+      } else if (t === 'update') { updates.push(...P.parseUpdate(wb)); }
+      else if (t === 'logsheet') { S.pending.log = P.parseLog(wb); S.names.log = f.name; addedMain = true; }
+      else if (t === 'audit') { S.pending.au = P.parseAudit(wb); S.names.au = f.name; addedMain = true; }
+      else if (t === 'breakdown') { S.pending.bd = P.parseBreakdown(wb); S.names.bd = f.name; addedMain = true; }
+      else { msg.className = 'msg err'; msg.textContent = f.name + ' was not recognised as a schedule, logsheet, breakdown or publish report.'; }
+      renderSlots();
+    }
+    if (addedMain) await runAnalysis();
+    if (updates.length) await applyUpdates(updates);
+  } finally { S.busy = false; }
+}
+
+function haveSched() { return S.pending.sched.length > 0 || S.savedSched.length > 0; }
+function renderSlots() {
+  const sc = S.pending.sched, saved = S.savedSched.filter(s => !sc.some(x => x.quarter === s.quarter));
+  const st = S.store || {};
+  const slot = (title, ok, lines, opt) => '<div class="slot"><div class="t"><span>' + title + '</span><span class="' + (ok ? 'ok' : 'no') + '">' + (ok ? '✓ ready' : (opt ? 'optional' : 'needed')) + '</span></div>' + lines.map(l => '<div class="f">' + l + '</div>').join('') + '</div>';
+  const sl = saved.concat(sc).map(s => esc(s.quarter) + ' · ' + s.assets.length + ' assets').concat(['Upload a new one only when a new quarter starts']);
+  const logOk = !!(S.pending.log || st.hasLog), bdOk = !!(S.pending.bd || st.hasBd);
+  $('slots').innerHTML =
+    slot('Maintenance schedule (quarterly)', haveSched(), sl) +
+    slot('Logsheet (daily)', logOk, [S.pending.log ? 'New file ready' : (st.logMax ? 'Saved data through ' + D(st.logMax) : 'Needed')]) +
+    slot('Breakdown / maintenance history (daily)', bdOk, [S.pending.bd ? 'New file ready' : (st.bdMax ? 'Saved entries through ' + D(st.bdMax) : 'Needed')]) +
+    slot('Publish report – checklists (daily)', !!(S.pending.au || st.hasAu), [S.pending.au ? 'New file ready' : (st.auMax ? 'Saved checklists through ' + D(st.auMax) : 'Compares checklists with executed maintenance')], true);
+}
+
+async function runAnalysis() {
+  const msg = $('upMsg'); msg.className = 'msg';
+  await ensureStore();
+  let bootstrapped = false;
+  if (!S.store.hasLog && !S.store.hasBd && S.data && S.data.rows) { S.store = bootstrapStore(); bootstrapped = true; }
+  if (S.pending.log) { mergeLogs(S.store, S.pending.log.logs); S.pending.log = null; }
+  if (S.pending.bd) { mergeEntries(S.store, S.pending.bd.entries); S.pending.bd = null; }
+  if (S.pending.au) { mergeAudits(S.store, S.pending.au); S.pending.au = null; }
+  const schedInfo = S.pending.sched.map(s => s.quarter + ': ' + s.slots.length + ' services' + (s.slots.some(x => x.carried !== null) ? ', ' + s.slots.filter(x => x.carried !== null).length + ' with "Carried out at" readings' : '') + (s.changedVsList && s.changedVsList.length ? ', ' + s.changedVsList.length + ' assets updated on the MS sheet (' + s.changedVsList.slice(0, 4).join(', ') + (s.changedVsList.length > 4 ? ' …' : '') + ')' : ''));
+  if (S.pending.sched.length) { S.savedSched = S.savedSched.filter(s => !S.pending.sched.some(x => x.quarter === s.quarter)).concat(S.pending.sched); S.pending.sched = []; }
+  renderSlots();
+  const miss = []; if (!S.savedSched.length) miss.push("this quarter's maintenance schedule"); if (!S.store.hasLog) miss.push('logsheet'); if (!S.store.hasBd) miss.push('breakdown history');
+  if (miss.length) { msg.className = 'msg err'; msg.textContent = 'Not updated yet. Still needed: ' + miss.join(', ') + '.'; toast('Not updated yet. Still needed: ' + miss.join(', ') + '.', 7000); return; }
+  msg.textContent = 'Matching maintenance entries to the schedule …'; await tick();
+  const R = P.analyze({schedules: S.savedSched, logs: storeLogs(S.store), entries: S.store.entries.map(e => Object.assign({}, e))}, S.opts);
+  R.counts.logRows = Object.keys(S.store.logs).reduce((n, k) => n + Object.keys(S.store.logs[k]).length, 0);
+  R.counts.entryRows = S.store.entries.length;
+  const akeys = new Set(R.assets.map(a => a.key));
+  const audits = (S.store.audits || []).filter(a => akeys.has(a.k));
+  R.counts.auRows = audits.length;
+  R.files = {schedules: S.savedSched.map(s => s.quarter), logThrough: S.store.logMax, bdThrough: S.store.bdMax, auThrough: S.store.auMax};
+  S.data = {rows: R.rows, unmatched: R.unmatched, assets: R.assets, asOf: R.asOf, counts: R.counts, files: R.files, audits};
+  reclassify();
+  showApp();
+  msg.textContent = 'Analysis complete – saving …'; await tick();
+  const r = await persist();
+  renderSync(r.shared ? 'team' : 'local');
+  $('uploadPanel').classList.add('hide'); refreshGate();
+  toast((schedInfo.length ? 'Schedule updated (' + schedInfo.join('; ') + '). ' : '') + (bootstrapped && !(S.pending.log || S.pending.bd) ? 'Used the saved readings and entries, upload the latest logsheet and history to refresh them. ' : '') + (r.shared ? 'Dashboard updated and shared with your team.' : ('Dashboard updated. ' + (r.why || ''))), 8000);
+  msg.textContent = '';
+}
+
+/* ---------------- classification & filtering ---------------- */
+function reclassify() {
+  S.rows = S.data.rows.map(r => {
+    r = Object.assign({}, r); r.manual = false;
+    const ov = S.over[r.key + '||' + r.type];
+    if (ov && (r.carriedAt === null || r.carriedAt === undefined)) {
+      if (ov.reading !== null && ov.reading !== undefined) { r.carriedAt = ov.reading; r.doneDate = ov.date || null; r.manual = true; r.note = 'Manual update' + (ov.remarks ? ': ' + ov.remarks : ''); }
+      else if (ov.remarks) r.note = 'Remark: ' + ov.remarks;
+    }
+    return P.classify(r, S.opts);
+  });
+  S.hasCk = !!(S.data.audits && S.data.audits.length);
+  S.orphans = P.checklistMatch(S.rows, S.data.audits || [], new Map(S.data.assets.map(a => [a.key, a])), S.opts);
+}
+async function applyUpdates(list) {
+  const msg = $('upMsg');
+  if (!S.data) { msg.className = 'msg err'; msg.textContent = 'Upload the schedule, logsheet and history first, then the update sheet.'; return; }
+  const known = new Set(S.data.rows.map(r => r.key + '||' + r.type));
+  let ok = 0, bad = 0;
+  list.forEach(u => { if (known.has(u.id)) { S.over[u.id] = {reading: u.reading, date: u.date, remarks: u.remarks}; ok++; } else bad++; });
+  reclassify(); showApp(); renderUpd();
+  msg.className = 'msg'; msg.textContent = 'Saving updates …'; await tick();
+  const r = await persist(); renderSync(r.shared ? 'team' : 'local');
+  msg.textContent = '';
+  toast(ok + ' service' + (ok === 1 ? '' : 's') + ' updated' + (bad ? ', ' + bad + ' row(s) did not match any scheduled service' : '') + '.' + (r.shared ? '' : ' ' + (r.why || '')), 6000);
+}
+function renderUpd() {
+  const n = S.rows.filter(r => r.status === 'NOTEXEC').length, m = Object.keys(S.over).length;
+  $('updBox').classList.toggle('hide', !(S.owner && S.data));
+  $('btnTpl').textContent = 'Download update sheet (' + n + ' not executed)';
+  $('btnTpl').disabled = !dl || !n;
+  $('updInfo').textContent = m + ' manual update' + (m === 1 ? '' : 's') + ' saved';
+  $('btnClrMan').classList.toggle('hide', !m);
+}
+async function downloadTemplate() {
+  const rows = S.rows.filter(r => r.status === 'NOTEXEC').sort((a, b) => (a.project || '').localeCompare(b.project || '') || a.asset.localeCompare(b.asset) || a.due - b.due);
+  const aoa = [['PM TRACKER – NOT EXECUTED UPDATE SHEET'], ['For services already done: enter the meter reading at which it was done (and the date). If not done, leave the reading blank and give the reason under Remarks. Do not edit columns A–F.'], [],
+    ['Asset code', 'Equipment', 'Project', 'Service', 'Due at', 'Current reading', 'Carried out at (reading)', 'Done date', 'Remarks']]
+    .concat(rows.map(r => [r.asset, r.desc, r.project, r.type, r.due, r.current, '', '', (S.over[r.key + '||' + r.type] || {}).remarks || '']));
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch: 14}, {wch: 26}, {wch: 38}, {wch: 10}, {wch: 10}, {wch: 14}, {wch: 24}, {wch: 14}, {wch: 40}];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Not executed');
+  const buf = XLSX.write(wb, {type: 'array', bookType: 'xlsx'});
+  try { await dl.save({filename: 'NotExecuted_Update_' + D(S.data.asOf).replace(/ /g, '-') + '.xlsx', data: buf}); }
+  catch (e) { if (!e || e.code !== 'declined') toast('Could not create the update sheet.'); }
+}
+
+function clusters() { return [...new Set(S.rows.map(r => r.cluster).filter(Boolean))].sort(); }
+function qSpan(l) {
+  const m = /Q(\d).*?FY(\d+)/i.exec(l || ''); if (!m) return null;
+  const q = +m[1], fy = 2000 + +m[2]; if (q < 1 || q > 4) return null;
+  const sm = [3, 6, 9, 0][q - 1], yr = q === 4 ? fy : fy - 1;
+  return {from: Math.floor(Date.UTC(yr, sm, 1) / 864e5), to: Math.floor(Date.UTC(yr, sm + 3, 0) / 864e5)};
+}
+function qLabel(l) {
+  const m = /Q(\d).*?FY(\d+)/i.exec(l || ''); if (!m) return l;
+  const q = +m[1], fy = +m[2], yr = 2000 + fy - (q === 4 ? 0 : 1);
+  return 'Q' + q + ' FY' + fy + ' (' + ['Apr–Jun', 'Jul–Sep', 'Oct–Dec', 'Jan–Mar'][q - 1] + ' ' + yr + ')';
+}
+function periodRange() {
+  const f = S.f, p = f.period;
+  if (!p || p === 'all' || !S.data) return null;
+  const a = S.data.asOf, b = new Date(a * 864e5), y = b.getUTCFullYear(), m = b.getUTCMonth();
+  const som = (yy, mm) => Math.floor(Date.UTC(yy, mm, 1) / 864e5), eom = (yy, mm) => Math.floor(Date.UTC(yy, mm + 1, 0) / 864e5);
+  if (p === 'last7') return {from: a - 6, to: a};
+  if (p === 'last30') return {from: a - 29, to: a};
+  if (p === 'month') return {from: som(y, m), to: eom(y, m)};
+  if (p === 'lastmonth') return {from: som(y, m - 1), to: eom(y, m - 1)};
+  if (p === 'next7') return {from: a + 1, to: a + 7};
+  if (p === 'next30') return {from: a + 1, to: a + 30};
+  if (p.indexOf('q:') === 0) return qSpan(p.slice(2));
+  if (p === 'custom') { const fr = P.parseDate(f.from), to = P.parseDate(f.to); return {from: fr === null ? -1e9 : fr, to: to === null ? 1e9 : to}; }
+  return null;
+}
+function inPeriod(r, rg) {
+  if (!rg) return true;
+  if (r.carriedAt !== null && r.carriedAt !== undefined && r.doneDate) return r.doneDate >= rg.from && r.doneDate <= rg.to;
+  if (r.status === 'UPCOMING') return !!r.eta && r.eta >= rg.from && r.eta <= rg.to;
+  const sp = qSpan(r.firstQuarter); if (!sp) return true;
+  return sp.from <= rg.to && sp.to >= rg.from;
+}
+function periodOptions() {
+  const a = S.data.asOf, b = new Date(a * 864e5), m = b.getUTCMonth(), yr = b.getUTCFullYear();
+  const cq = Math.floor(((m + 9) % 12) / 3) + 1, cfy = (m >= 3 ? yr + 1 : yr) % 100;
+  const qs = new Set((S.data.files.schedules || []).filter(x => qSpan(x)));
+  qs.add('Q' + cq + '_FY' + String(cfy).padStart(2, '0'));
+  const ql = [...qs].sort((x, y) => qSpan(x).from - qSpan(y).from);
+  return [['all', 'All time'], ['last7', 'Last 7 days'], ['last30', 'Last 30 days'], ['month', 'This month'], ['lastmonth', 'Last month'], ['next7', 'Next 7 days'], ['next30', 'Next 30 days']]
+    .concat(ql.map(x => ['q:' + x, qLabel(x)])).concat([['custom', 'Custom range…']]);
+}
+function baseRows(skip) {
+  const f = S.f, q = f.q.trim().toLowerCase(), rg = periodRange();
+  return S.rows.filter(r =>
+    (skip === 'period' || inPeriod(r, rg)) && (!f.cluster || r.cluster === f.cluster) && (skip === 'project' || !f.project || r.project === f.project) &&
+    (!f.equip || r.desc === f.equip) &&
+    (!q || (r.asset + ' ' + r.desc + ' ' + r.project + ' ' + r.type).toLowerCase().includes(q)));
+}
+function counts(rows) {
+  const c = {ckOK: 0, ckDIFF: 0, ckMISSING: 0, ckNOCL: 0, ckFOUND: 0, near: 0, DONE: 0, DELAYED: 0, MISSED: 0, NOTEXEC: 0, UPCOMING: 0, NOREADING: 0, soon: 0, nexMissed: 0, nexDelayed: 0, nexRecent: 0, noreadAssets: 0};
+  rows.forEach(r => { c[r.status]++; if (r.ckSt) c['ck' + r.ckSt]++; if (r.status === 'UPCOMING' && r.soon) c.soon++; if (r.status === 'UPCOMING' && r.near) c.near++; if (r.status === 'NOTEXEC') { if (r.sev === 'MISSED') c.nexMissed++; else if (r.sev === 'DELAYED') c.nexDelayed++; else c.nexRecent++; } });
+  c.due = c.DONE + c.DELAYED + c.MISSED + c.NOTEXEC;
+  c.pct = c.due ? Math.round(100 * (c.DONE + c.DELAYED) / c.due) : null;
+  return c;
+}
+
+/* ---------------- rendering ---------------- */
+function showApp() {
+  $('app').classList.remove('hide');
+  const a = S.data;
+  $('chipAsOf').classList.remove('hide'); $('asOf').textContent = D(a.asOf);
+  renderUpd();
+  const cl = clusters();
+  $('subline').textContent = 'Preventive maintenance compliance · Cluster ' + (cl.join(' + ') || 'DLCL') + ' · ' + new Set(S.rows.map(r => r.key)).size + ' assets · schedules ' + (a.files.schedules || []).join(', ');
+  renderFilters(); renderTabs(); renderView();
+}
+function renderSync(source) {
+  const c = $('chipSync'); c.classList.remove('hide');
+  const when = S.meta && S.meta.updatedAt ? new Date(S.meta.updatedAt).toLocaleString('en-IN', {day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'}) : '';
+  c.innerHTML = source === 'team' ? '🟢 Shared with team · updated <b>' + esc(when) + '</b>' : '🟡 Saved on this device only' + (when ? ' · <b>' + esc(when) + '</b>' : '');
+}
+
+function renderFilters() {
+  const rows = S.rows;
+  const cl = clusters();
+  const projs = [...new Set(rows.filter(r => !S.f.cluster || r.cluster === S.f.cluster).map(r => r.project).filter(Boolean))].sort();
+  const eq = [...new Set(rows.map(r => r.desc).filter(Boolean))].sort();
+  const opt = (arr, cur, all) => '<option value="">' + all + '</option>' + arr.map(x => '<option' + (x === cur ? ' selected' : '') + ' value="' + esc(x) + '">' + esc(x) + '</option>').join('');
+  const popt = periodOptions();
+  const rg = periodRange();
+  $('filters').innerHTML =
+    '<label class="muted small" style="font-weight:700">Period</label><select id="fPeriod" title="Period" style="font-weight:700">' + popt.map(([v, l]) => '<option value="' + esc(v) + '"' + (S.f.period === v ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select>' +
+    (S.f.period === 'custom' ? '<input type="date" id="fFrom" value="' + esc(S.f.from) + '" title="From"><span class="muted small">to</span><input type="date" id="fTo" value="' + esc(S.f.to) + '" title="To">' : '') +
+    '<select id="fCluster" title="Cluster">' + opt(cl, S.f.cluster, 'All clusters') + '</select>' +
+    '<select id="fProject" title="Project" style="max-width:300px">' + opt(projs, S.f.project, 'All projects (' + projs.length + ')') + '</select>' +
+    '<select id="fEquip" title="Equipment type">' + opt(eq, S.f.equip, 'All equipment') + '</select>' +
+    '<input type="search" id="fQ" placeholder="Search asset, project, service…" value="' + esc(S.f.q) + '">' +
+    (S.f.cluster || S.f.project || S.f.equip || S.f.q || S.f.status || S.f.ck || S.f.period !== 'all' ? '<button class="btn sm" id="fClear">Clear filters</button>' : '') +
+    (rg ? '<div class="muted small" style="flex-basis:100%">Showing ' + (rg.from > -1e8 ? D(rg.from) : 'start') + ' to ' + (rg.to < 1e8 ? D(rg.to) : 'latest') + ': executed services by service date, upcoming by expected date, not executed by the quarter they were scheduled in.</div>' : '');
+  $('fPeriod').onchange = e => { S.f.period = e.target.value; if (S.f.period === 'custom' && !S.f.from) { S.f.from = new Date((S.data.asOf - 29) * 864e5).toISOString().slice(0, 10); S.f.to = new Date(S.data.asOf * 864e5).toISOString().slice(0, 10); } S.planSel = null; renderAll(); };
+  if ($('fFrom')) { $('fFrom').onchange = e => { S.f.from = e.target.value; S.planSel = null; renderAll(); }; $('fTo').onchange = e => { S.f.to = e.target.value; S.planSel = null; renderAll(); }; }
+  $('fCluster').onchange = e => { S.f.cluster = e.target.value; S.f.project = ''; renderAll(); };
+  $('fProject').onchange = e => { S.f.project = e.target.value; renderAll(); };
+  $('fEquip').onchange = e => { S.f.equip = e.target.value; renderAll(); };
+  let t; $('fQ').oninput = e => { clearTimeout(t); const v = e.target.value; t = setTimeout(() => { S.f.q = v; S.shown = 300; renderView(); renderFilterClear(); }, 200); };
+  if ($('fClear')) $('fClear').onclick = () => { S.f = {cluster: '', project: '', equip: '', q: '', status: '', ck: '', period: 'all', from: '', to: ''}; renderAll(); };
+}
+function renderFilterClear() { if (!$('fClear') && (S.f.q)) renderFilters(), $('fQ').focus(); }
+function renderAll() { S.shown = 300; renderFilters(); renderTabs(); renderView(); }
+
+const TABS = [['overview', 'Overview'], ['tracker', 'Service tracker'], ['checklist', 'Checklist check'], ['assets', 'Assets'], ['unmatched', 'Unmatched entries'], ['rules', 'Rules & data check']];
+function renderTabs() {
+  $('tabs').innerHTML = TABS.map(([k, l]) => '<button class="tab' + (S.tab === k ? ' on' : '') + '" data-t="' + k + '">' + l + (k === 'unmatched' ? ' <span class="muted">(' + S.data.unmatched.length + ')</span>' : '') + '</button>').join('');
+  $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { S.tab = b.dataset.t; S.shown = 300; renderTabs(); renderView(); });
+}
+function renderView() {
+  const v = $('view');
+  ({overview: renderOverview, tracker: renderTracker, checklist: renderChecklist, assets: renderAssets, unmatched: renderUnmatched, rules: renderRules})[S.tab](v);
+}
+
+function kpiHtml(c, sel) {
+  const k = (cls, key, l, v, s) => '<button class="kpi ' + cls + (sel === key ? ' sel' : '') + '" data-s="' + key + '"><div class="l">' + l + '</div><div class="v">' + v + '</div><div class="s">' + s + '</div></button>';
+  return '<div class="kpis">' +
+    k('k-all', '', 'Compliance', c.pct === null ? '–' : c.pct + '%', (c.DONE + c.DELAYED) + ' of ' + c.due + ' due · on time + delayed') +
+    k('k-done', 'DONE', 'Completed on time', c.DONE, 'done within ' + S.opts.delayHrs + ' hrs of due') +
+    k('k-delay', 'DELAYED', 'Delayed', c.DELAYED, 'done ' + S.opts.delayHrs + '–' + S.opts.missHrs + ' hrs late') +
+    k('k-miss', 'MISSED', 'Missed', c.MISSED, 'done over ' + S.opts.missHrs + ' hrs late') +
+    k('k-nex', 'NOTEXEC', 'Not executed', c.NOTEXEC, 'no entry · ' + c.nexMissed + ' over ' + S.opts.missHrs + ' hrs, ' + c.nexDelayed + ' over ' + S.opts.delayHrs) +
+    (S.hasCk ? '<button class="kpi k-ck" data-ck="MISSING"><div class="l">Checklist missing</div><div class="v">' + (c.ckMISSING + c.ckNOCL) + '</div><div class="s">of ' + (c.ckOK + c.ckDIFF + c.ckMISSING + c.ckNOCL) + ' executed · ' + c.ckDIFF + ' done with a different type</div></button>' : '') +
+    k('k-up', 'UPCOMING', 'Upcoming', c.soon, c.near + ' within ' + S.opts.attnHrs + ' hrs · within ' + S.opts.soonHrs + ' hrs shown · ' + (c.UPCOMING - c.soon) + ' later') +
+    '</div>';
+}
+function bindKpis(root) {
+  root.querySelectorAll('.kpi').forEach(b => b.onclick = () => { if (b.dataset.ck) { S.f.ck = ''; S.f.status = ''; S.tab = 'checklist'; } else { S.f.status = b.dataset.s; S.f.ck = ''; S.tab = 'tracker'; } S.shown = 300; renderAll(); });
+}
+function barHtml(c) {
+  const tot = c.DONE + c.DELAYED + c.MISSED + c.NOTEXEC + c.UPCOMING || 1;
+  return '<div class="bar">' + ['DONE', 'DELAYED', 'MISSED', 'NOTEXEC', 'UPCOMING'].map(k => c[k] ? '<i class="' + k + '" style="width:' + (100 * c[k] / tot) + '%" title="' + STATUS[k] + ': ' + c[k] + '"></i>' : '').join('') + '</div>';
+}
+const legendHtml = '<div class="legend"><span class="l-DONE">Completed</span><span class="l-DELAYED">Delayed</span><span class="l-MISSED">Missed</span><span class="l-NOTEXEC">Not executed</span><span class="l-UPCOMING">Upcoming</span></div>';
+const MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function planBuckets(rows, mode) {
+  const asOf = S.data.asOf, out = [], sh = d => D(d).slice(0, 6);
+  if (mode === 'week') {
+    for (let k = 0; k < 4; k++) out.push({label: 'Week ' + (k + 1), range: sh(asOf + 1 + 7 * k) + ' – ' + sh(asOf + 7 + 7 * k), rows: []});
+  } else {
+    const b = new Date(asOf * 864e5);
+    for (let i = 0; i < 4; i++) { const d = new Date(Date.UTC(b.getUTCFullYear(), b.getUTCMonth() + i, 1)); out.push({label: MN[d.getUTCMonth()] + ' ' + d.getUTCFullYear(), range: i === 0 ? 'rest of this month' : 'full month', rows: []}); }
+  }
+  out.push({label: 'Later', range: 'beyond this plan', rows: []});
+  out.push({label: 'No projection', range: 'asset not running recently', rows: []});
+  const bd = new Date(asOf * 864e5), baseKey = bd.getUTCFullYear() * 12 + bd.getUTCMonth();
+  rows.forEach(r => {
+    if (!r.eta) { out[5].rows.push(r); return; }
+    let i;
+    if (mode === 'week') { const off = r.eta - asOf; i = off <= 7 ? 0 : Math.ceil(off / 7) - 1; }
+    else { const d = new Date(r.eta * 864e5); i = Math.max(0, d.getUTCFullYear() * 12 + d.getUTCMonth() - baseKey); }
+    out[i > 3 ? 4 : i].rows.push(r);
+  });
+  out.forEach(b => b.rows.sort((x, y) => (x.eta || 1e9) - (y.eta || 1e9) || x.remaining - y.remaining));
+  return out;
+}
+
+function renderOverview(v) {
+  const rows = baseRows();
+  if (!rows.length) { v.innerHTML = '<div class="card empty">No services match the current filters.</div>'; return; }
+  const c = counts(rows);
+  const byProj = new Map();
+  baseRows('project').forEach(r => { const k = r.project || '(no project)'; if (!byProj.has(k)) byProj.set(k, []); byProj.get(k).push(r); });
+  const plist = [...byProj.entries()].map(([p, rs]) => ({p, rs, c: counts(rs), assets: new Set(rs.map(r => r.key)).size}))
+    .sort((a, b) => (b.c.NOTEXEC + b.c.MISSED) - (a.c.NOTEXEC + a.c.MISSED) || a.p.localeCompare(b.p));
+  const att = baseRows('period').filter(r => r.status === 'NOTEXEC' || (r.status === 'UPCOMING' && r.near))
+    .sort((a, b) => (a.status === 'NOTEXEC' ? 0 : 1) - (b.status === 'NOTEXEC' ? 0 : 1) || (a.status === 'NOTEXEC' ? b.over - a.over : a.remaining - b.remaining));
+  const nNex = att.filter(r => r.status === 'NOTEXEC').length;
+  const up = rows.filter(r => r.status === 'UPCOMING');
+  const bk = planBuckets(up, S.planMode);
+  if (S.planSel === null || S.planSel >= bk.length) S.planSel = Math.max(0, bk.findIndex(b => b.rows.length));
+  const sel = bk[S.planSel];
+  const tcols = '<th class="ns">Project</th><th class="ns">Asset</th><th class="ns">Service</th>';
+  v.innerHTML = kpiHtml(c, S.f.status) +
+    '<div class="card pad"><h2>By project</h2><div class="tw" style="max-height:42vh"><table><thead><tr><th class="ns">Project</th><th class="n ns">Assets</th><th class="n ns">Due</th><th class="n ns">Completed</th><th class="n ns">Delayed</th><th class="n ns">Missed</th><th class="n ns">Not exec.</th><th class="n ns">Upcoming ≤' + S.opts.soonHrs + '</th><th class="ns">Mix</th><th class="n ns">Compliance %</th></tr></thead><tbody>' +
+    plist.map(x => '<tr class="proj-row' + (S.f.project === x.p ? ' sel' : '') + '" data-p="' + esc(x.p) + '"><td>' + esc(x.p) + '</td><td class="n">' + x.assets + '</td><td class="n">' + x.c.due + '</td><td class="n">' + x.c.DONE + '</td><td class="n">' + x.c.DELAYED + '</td><td class="n">' + x.c.MISSED + '</td><td class="n"><b>' + x.c.NOTEXEC + '</b></td><td class="n">' + x.c.soon + '</td><td>' + barHtml(x.c) + '</td><td class="n">' + (x.c.pct === null ? '–' : x.c.pct + '%') + '</td></tr>').join('') +
+    '</tbody></table></div>' + legendHtml + '<div class="muted small" style="margin-top:6px">Click a project to filter everything else to it.</div></div>' +
+
+    '<div class="card pad" style="margin-top:12px"><div class="filters" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">Needs attention <span class="muted" style="font-weight:500">· ' + nNex + ' not executed · ' + (att.length - nNex) + ' due within ' + S.opts.attnHrs + ' hrs</span>' + (periodRange() ? ' <span class="chip" style="font-weight:500">not affected by the period filter</span>' : '') + '</h2>' + (dl && att.length ? '<button class="btn sm" id="btnAttCsv">Export needs attention</button>' : '') + '</div>' +
+    (att.length ? '<div class="tw" style="max-height:44vh"><table><thead><tr><th class="ns">Project</th><th class="ns">Asset</th><th class="ns">Service</th><th class="n ns">Due at</th><th class="n ns">Current</th><th class="n ns">Over (+) / left (−)</th><th class="ns">Status</th><th class="ns">Note</th></tr></thead><tbody>' +
+      att.map(r => '<tr><td>' + esc(r.project) + '</td><td><b>' + esc(r.asset) + '</b><div class="muted small">' + esc(r.desc) + '</div></td><td>' + esc(r.type) + '</td><td class="n">' + fmt(r.due) + '</td><td class="n">' + fmt(r.current) + '</td><td class="n">' + (r.status === 'NOTEXEC' ? '+' + fmt(r.over) : '−' + fmt(r.remaining)) + '</td><td>' + badge(r) + '</td><td class="small">' + esc(r.note) + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="empty small">Nothing needs attention 🎉</div>') + '</div>' +
+
+    '<div class="card pad" style="margin-top:12px"><div class="filters" style="justify-content:space-between"><h2 style="margin:0">Coming up – maintenance plan</h2><div class="filters"><div class="seg"><button data-m="week" class="' + (S.planMode === 'week' ? 'on' : '') + '">Weekly</button><button data-m="month" class="' + (S.planMode === 'month' ? 'on' : '') + '">Monthly</button></div>' + (dl ? '<button class="btn sm" id="btnPlanCsv">Export plan</button>' : '') + '</div></div>' +
+    '<div class="muted small" style="margin-top:4px">Planned from each asset\'s current reading and its average running hours over the last ' + S.opts.trendDays + ' days (as of ' + D(S.data.asOf) + '). Dates are estimates.</div>' +
+    '<div class="tiles">' + bk.map((b, i) => '<button class="tile' + (S.planSel === i ? ' sel' : '') + '" data-i="' + i + '"><div class="l">' + esc(b.label) + '</div><div class="v">' + b.rows.length + '</div><div class="s">' + esc(b.range) + '</div></button>').join('') + '</div>' +
+    (sel.rows.length ? '<div class="tw" style="max-height:46vh"><table><thead><tr>' + tcols + '<th class="n ns">Due at</th><th class="n ns">Current</th><th class="n ns">Hrs left</th><th class="n ns">Avg run / day</th><th class="ns">Expected date</th></tr></thead><tbody>' +
+      sel.rows.map(r => '<tr><td>' + esc(r.project) + '</td><td><b>' + esc(r.asset) + '</b><div class="muted small">' + esc(r.desc) + '</div></td><td>' + esc(r.type) + '</td><td class="n">' + fmt(r.due) + '</td><td class="n">' + fmt(r.current) + '</td><td class="n">' + fmt(r.remaining) + '</td><td class="n">' + fmt(r.avgDaily) + '</td><td>' + (r.eta ? D(r.eta) : '<span class="muted">–</span>') + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="empty small">No services planned for this period.</div>') + '</div>';
+  bindKpis(v);
+  v.querySelectorAll('.proj-row').forEach(tr => tr.onclick = () => { S.f.project = S.f.project === tr.dataset.p ? '' : tr.dataset.p; renderAll(); });
+  v.querySelectorAll('.seg button').forEach(b => b.onclick = () => { S.planMode = b.dataset.m; S.planSel = null; renderView(); });
+  v.querySelectorAll('.tile').forEach(b => b.onclick = () => { S.planSel = +b.dataset.i; renderView(); });
+  if ($('btnAttCsv')) $('btnAttCsv').onclick = () => exportCsv(att, 'Needs_attention');
+  if ($('btnPlanCsv')) $('btnPlanCsv').onclick = () => exportCsv(bk.reduce((a, b) => a.concat(b.rows), []));
+}
+
+function badge(r) {
+  let s = '<span class="b ' + r.status + '">' + STATUS[r.status] + '</span>';
+  if (r.status === 'NOTEXEC') s += '<span class="sev">' + (r.sev === 'MISSED' ? '>' + S.opts.missHrs + ' hrs over' : r.sev === 'DELAYED' ? '>' + S.opts.delayHrs + ' hrs over' : 'just due') + '</span>';
+  if (r.status === 'UPCOMING' && r.soon) s += '<span class="sev">due soon</span>';
+  if (r.manual) s += '<span class="sev">manual</span>';
+  if (r.fromSched) s += '<span class="sev">from schedule</span>';
+  return s;
+}
+
+function ckBadge(r) {
+  if (!r.ckSt) return '';
+  const nm = P.ckShort(r.ckName), dt = r.ckDate ? D(r.ckDate) : '';
+  if (r.ckSt === 'OK') return '<span class="b DONE">✓ Published</span><div class="muted small">' + esc(nm) + ' · ' + dt + '</div>';
+  if (r.ckSt === 'DIFF') return '<span class="b DELAYED">✓ Done · type differs</span><div class="muted small">' + esc(nm) + ' · ' + dt + '</div>';
+  if (r.ckSt === 'MISSING') return '<span class="b MISSED">Missing</span>';
+  if (r.ckSt === 'NOCL') return '<span class="b NOREADING">No checklist for asset</span>';
+  if (r.ckSt === 'FOUND') return '<span class="b NOTEXEC">Checklist found</span><div class="muted small">' + esc(nm) + ' · ' + dt + '<br>entry missing?</div>';
+  return '';
+}
+const CKLABEL = {DONE: 'Checklist done', OK: 'Published', DIFF: 'Done, type differs', MISSING: 'Missing', NOCL: 'No checklist for asset', FOUND: 'Found, no entry'};
+/* tracker */
+const COLS = [
+  ['project', 'Project', r => esc(r.project)], ['asset', 'Asset', r => '<b>' + esc(r.asset) + '</b>'], ['desc', 'Equipment', r => esc(r.desc)],
+  ['type', 'Service', r => esc(r.type)], ['due', 'Due at', r => fmt(r.due), 1], ['carriedAt', 'Carried out at', r => fmt(r.carriedAt), 1],
+  ['current', 'Current', r => fmt(r.current), 1], ['over', 'Over (+) / left (−)', r => r.status === 'UPCOMING' ? '−' + fmt(r.remaining) : (r.over === null ? '–' : (r.over > 0 ? '+' : '') + fmt(r.over)), 1],
+  ['status', 'Status', r => badge(r)], ['ckSt', 'Checklist', r => ckBadge(r), 0, 1], ['doneDate', 'Serviced on', r => r.doneDate ? D(r.doneDate) : (r.eta ? '<span class="muted">~' + D(r.eta) + '</span>' : '')],
+  ['note', 'Note', r => esc(r.note)]
+];
+function sortVal(r, col) {
+  if (col === 'over') return r.status === 'UPCOMING' ? -r.remaining : (r.over === null ? -1e9 : r.over);
+  const v = r[col]; return v === null || v === undefined ? (typeof v === 'number' ? -1e9 : '') : v;
+}
+function renderTracker(v) {
+  let rows = baseRows();
+  const c = counts(rows);
+  if (S.f.status) rows = rows.filter(r => r.status === S.f.status);
+  if (S.f.ck) rows = rows.filter(r => S.f.ck === 'DONE' ? (r.ckSt === 'OK' || r.ckSt === 'DIFF') : r.ckSt === S.f.ck);
+  const {col, dir} = S.sort;
+  rows = rows.slice().sort((a, b) => { const x = sortVal(a, col), y = sortVal(b, col); return (x < y ? -1 : x > y ? 1 : 0) * dir || a.asset.localeCompare(b.asset) || a.due - b.due; });
+  const stChip = (k, l) => '<button class="btn sm" data-s="' + k + '" style="' + (S.f.status === k ? 'background:var(--accent-bg);border-color:var(--accent)' : '') + '">' + l + (k ? ' (' + c[k] + ')' : '') + '</button>';
+  v.innerHTML = '<div class="card pad"><div class="filters" style="justify-content:space-between;margin-bottom:8px"><div class="filters">' +
+    stChip('', 'All (' + (c.DONE + c.DELAYED + c.MISSED + c.NOTEXEC + c.UPCOMING + c.NOREADING) + ')') + ['NOTEXEC', 'MISSED', 'DELAYED', 'UPCOMING', 'DONE', 'NOREADING'].map(k => stChip(k, STATUS[k])).join('') +
+    '</div><div class="filters"><span class="muted small">' + rows.length + ' rows</span>' + (dl ? '<button class="btn sm" id="btnCsv">Export CSV</button>' : '') + '</div></div>' +
+    (S.hasCk ? '<div class="filters" style="margin-bottom:8px"><span class="muted small">Checklist:</span>' + ['', 'DONE', 'OK', 'DIFF', 'MISSING', 'NOCL', 'FOUND'].map(k => '<button class="btn sm" data-ck="' + k + '" style="' + (S.f.ck === k ? 'background:var(--accent-bg);border-color:var(--accent)' : '') + '">' + (k ? CKLABEL[k] + ' (' + (k === 'DONE' ? c.ckOK + c.ckDIFF : c['ck' + k]) + ')' : 'All') + '</button>').join('') + '</div>' : '') +
+    (rows.length ? '<div class="tw"><table><thead><tr>' + COLS.filter(x => !x[4] || S.hasCk).map(([k, l, , n]) => '<th data-c="' + k + '" class="' + (n ? 'n' : '') + '">' + l + (S.sort.col === k ? (S.sort.dir > 0 ? ' ▲' : ' ▼') : '') + '</th>').join('') + '</tr></thead><tbody>' +
+      rows.slice(0, S.shown).map(r => '<tr>' + COLS.filter(x => !x[4] || S.hasCk).map(([, , f, n]) => '<td class="' + (n ? 'n' : '') + '">' + f(r) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>' +
+      (rows.length > S.shown ? '<div style="text-align:center;margin-top:10px"><button class="btn sm" id="more">Show more (' + (rows.length - S.shown) + ' remaining)</button></div>' : '') : '<div class="empty">No services match the current filters.</div>') + '</div>';
+  v.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { S.f.status = b.dataset.s; S.shown = 300; renderFilters(); renderView(); });
+  v.querySelectorAll('[data-ck]').forEach(b => b.onclick = () => { S.f.ck = b.dataset.ck; S.shown = 300; renderFilters(); renderView(); });
+  v.querySelectorAll('th[data-c]').forEach(th => th.onclick = () => { const k = th.dataset.c; S.sort = {col: k, dir: S.sort.col === k ? -S.sort.dir : 1}; renderView(); });
+  if ($('more')) $('more').onclick = () => { S.shown += 400; renderView(); };
+  if ($('btnCsv')) $('btnCsv').onclick = () => exportCsv(rows);
+}
+async function exportCsv(rows, name) {
+  const q = x => '"' + String(x === null || x === undefined ? '' : x).replace(/"/g, '""') + '"';
+  const head = ['Cluster', 'Project', 'Asset code', 'Equipment', 'Service', 'Due at', 'Carried out at', 'Current reading', 'Over (+)/left (-)', 'Status', 'Severity', 'Serviced on', 'Expected date', 'Manual update', 'Checklist', 'Checklist date', 'Checklist type', 'Note'];
+  const lines = [head.map(q).join(',')].concat(rows.map(r => [r.cluster, r.project, r.asset, r.desc, r.type, r.due, r.carriedAt, r.current, r.status === 'UPCOMING' ? -r.remaining : r.over, STATUS[r.status], r.sev, r.doneDate ? D(r.doneDate) : '', r.eta ? D(r.eta) : '', r.manual ? 'Yes' : '', r.ckSt ? CKLABEL[r.ckSt] : '', r.ckDate ? D(r.ckDate) : '', r.ckName ? P.ckShort(r.ckName) : '', r.note].map(q).join(',')));
+  try { await dl.save({filename: (name || 'DLCL_maintenance_tracker') + '_' + D(S.data.asOf).replace(/ /g, '-') + '.csv', data: '\ufeff' + lines.join('\n')}); }
+  catch (e) { if (!e || e.code !== 'declined') toast('Could not export the file.'); }
+}
+
+async function saveCsv(name, head, arr) {
+  const q = x => '"' + String(x === null || x === undefined ? '' : x).replace(/"/g, '""') + '"';
+  const csv = [head.map(q).join(',')].concat(arr.map(r => r.map(q).join(','))).join('\n');
+  try { await dl.save({filename: name + '_' + D(S.data.asOf).replace(/ /g, '-') + '.csv', data: '\ufeff' + csv}); }
+  catch (e) { if (!e || e.code !== 'declined') toast('Could not export the file.'); }
+}
+function renderChecklist(v) {
+  if (!S.hasCk) { v.innerHTML = '<div class="card empty"><b>No checklist data yet.</b><br>Upload the Publish report to compare published maintenance checklists (250 H, 500 H, 1000 H …) with the executed maintenance.</div>'; return; }
+  const rows = baseRows(), keys = new Set(rows.map(r => r.key));
+  const ex = rows.filter(r => ['OK', 'DIFF', 'MISSING', 'NOCL'].includes(r.ckSt));
+  const cc = counts(rows);
+  const rg = periodRange();
+  const orph = S.orphans.filter(o => keys.has(o.key) && (!rg || (o.date >= rg.from && o.date <= rg.to)));
+  const pct = ex.length ? Math.round(100 * (cc.ckOK + cc.ckDIFF) / ex.length) : null;
+  const k = (cls, l, val, s, ck) => '<button class="kpi ' + cls + '"' + (ck ? ' data-ck="' + ck + '"' : '') + '><div class="l">' + l + '</div><div class="v">' + val + '</div><div class="s">' + s + '</div></button>';
+  const byP = new Map();
+  ex.forEach(r => { const p = r.project || '(no project)'; if (!byP.has(p)) byP.set(p, {ex: 0, OK: 0, DIFF: 0, MISSING: 0, NOCL: 0, orph: 0}); const o = byP.get(p); o.ex++; o[r.ckSt]++; });
+  orph.forEach(o => { const p = o.project || '(no project)'; if (!byP.has(p)) byP.set(p, {ex: 0, OK: 0, DIFF: 0, MISSING: 0, NOCL: 0, orph: 0}); byP.get(p).orph++; });
+  const plist = [...byP.entries()].sort((a, b) => (b[1].MISSING + b[1].NOCL) - (a[1].MISSING + a[1].NOCL) || a[0].localeCompare(b[0]));
+  const diffRows = ex.filter(r => r.ckSt === 'DIFF').sort((a, b) => (a.project || '').localeCompare(b.project || '') || a.asset.localeCompare(b.asset) || a.due - b.due);
+  const exc = ex.filter(r => r.ckSt === 'MISSING' || r.ckSt === 'NOCL').sort((a, b) => (a.project || '').localeCompare(b.project || '') || a.asset.localeCompare(b.asset) || a.due - b.due);
+  const od = orph.slice().sort((a, b) => (a.project || '').localeCompare(b.project || '') || a.asset.localeCompare(b.asset) || a.date - b.date);
+  v.innerHTML = '<div class="kpis">' +
+    k('k-all', 'Executed maintenance', ex.length, 'services with an entry in the system') +
+    k('k-done', 'Checklist done', cc.ckOK + cc.ckDIFF, (pct === null ? '' : pct + '% of executed') + ' · within ±' + S.opts.ckWin + ' days', 'DONE') +
+    k('k-delay', 'Done, type differs', cc.ckDIFF, 'counted as done, marked for review', 'DIFF') +
+    k('k-miss', 'Checklist missing', cc.ckMISSING, 'no checklist near the service date', 'MISSING') +
+    k('k-nex', 'No checklist for asset', cc.ckNOCL, 'asset has no maintenance checklist at all', 'NOCL') +
+    k('k-up', 'Checklist, no entry', od.length, cc.ckFOUND + ' linked to a Not executed service', 'FOUND') + '</div>' +
+    '<div class="card pad"><h2>By project</h2><div class="tw" style="max-height:38vh"><table><thead><tr><th class="ns">Project</th><th class="n ns">Executed</th><th class="n ns">Checklist done</th><th class="n ns">of which type differs</th><th class="n ns">Missing</th><th class="n ns">No checklist for asset</th><th class="n ns">Checklist, no entry</th><th class="n ns">Done %</th></tr></thead><tbody>' +
+    plist.map(([p, o]) => '<tr class="proj-row' + (S.f.project === p ? ' sel' : '') + '" data-p="' + esc(p) + '"><td>' + esc(p) + '</td><td class="n">' + o.ex + '</td><td class="n">' + (o.OK + o.DIFF) + '</td><td class="n">' + o.DIFF + '</td><td class="n">' + (o.MISSING ? '<b style="color:var(--miss)">' + o.MISSING + '</b>' : 0) + '</td><td class="n">' + o.NOCL + '</td><td class="n">' + o.orph + '</td><td class="n">' + (o.ex ? Math.round(100 * (o.OK + o.DIFF) / o.ex) + '%' : '–') + '</td></tr>').join('') + '</tbody></table></div></div>' +
+    '<div class="card pad" style="margin-top:12px"><div class="filters" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">Executed maintenance without a checklist <span class="muted" style="font-weight:500">· ' + exc.length + '</span></h2>' + (dl && exc.length ? '<button class="btn sm" id="btnExcCsv">Export</button>' : '') + '</div>' +
+    (exc.length ? '<div class="tw" style="max-height:46vh"><table><thead><tr><th class="ns">Project</th><th class="ns">Asset</th><th class="ns">Service</th><th class="n ns">Due at</th><th class="n ns">Carried out at</th><th class="ns">Serviced on</th><th class="ns">Entry says</th><th class="ns">Checklist</th></tr></thead><tbody>' +
+      exc.map(r => '<tr><td>' + esc(r.project) + '</td><td><b>' + esc(r.asset) + '</b><div class="muted small">' + esc(r.desc) + '</div></td><td>' + esc(r.type) + '</td><td class="n">' + fmt(r.due) + '</td><td class="n">' + fmt(r.carriedAt) + '</td><td>' + (r.doneDate ? D(r.doneDate) : '') + '</td><td class="small">' + esc(r.doneType) + '</td><td>' + ckBadge(r) + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="empty small">Every executed service has a checklist 🎉</div>') + '</div>' +
+    '<div class="card pad" style="margin-top:12px"><div class="filters" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">Done, but checklist type differs <span class="muted" style="font-weight:500">· ' + diffRows.length + '</span></h2>' + (dl && diffRows.length ? '<button class="btn sm" id="btnDiffCsv">Export</button>' : '') + '</div><div class="muted small" style="margin-bottom:8px">A checklist was published within ±' + S.opts.ckWin + ' days, so these count as done. The checklist interval is not the same as the service, so please review.</div>' +
+    (diffRows.length ? '<div class="tw" style="max-height:40vh"><table><thead><tr><th class="ns">Project</th><th class="ns">Asset</th><th class="ns">Service</th><th class="ns">Serviced on</th><th class="ns">Entry says</th><th class="ns">Checklist published</th></tr></thead><tbody>' +
+      diffRows.map(r => '<tr><td>' + esc(r.project) + '</td><td><b>' + esc(r.asset) + '</b><div class="muted small">' + esc(r.desc) + '</div></td><td>' + esc(r.type) + '</td><td>' + (r.doneDate ? D(r.doneDate) : '') + '</td><td class="small">' + esc(r.doneType) + '</td><td>' + esc(P.ckShort(r.ckName)) + '<div class="muted small">' + D(r.ckDate) + ' (' + (r.ckOff > 0 ? '+' : '') + r.ckOff + ' days)</div></td></tr>').join('') + '</tbody></table></div>' : '<div class="empty small">None 🎉</div>') + '</div>' +
+    '<div class="card pad" style="margin-top:12px"><div class="filters" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">Checklists published but no maintenance entry <span class="muted" style="font-weight:500">· ' + od.length + '</span></h2>' + (dl && od.length ? '<button class="btn sm" id="btnOrphCsv">Export</button>' : '') + '</div><div class="muted small" style="margin-bottom:8px">A maintenance checklist was published, but no servicing entry was found near its date. The maintenance may have been done without an entry in the system. Where it fits a Not executed service, that service is shown as linked.</div>' +
+    (od.length ? '<div class="tw" style="max-height:46vh"><table><thead><tr><th class="ns">Project</th><th class="ns">Asset</th><th class="ns">Published on</th><th class="ns">Checklist</th><th class="ns">Possibly covers</th></tr></thead><tbody>' +
+      od.map(o => '<tr><td>' + esc(o.project) + '</td><td><b>' + esc(o.asset) + '</b><div class="muted small">' + esc(o.desc) + '</div></td><td>' + D(o.date) + '</td><td>' + esc(P.ckShort(o.name)) + '<div class="muted small">' + esc(o.name) + '</div></td><td>' + (o.link ? '<span class="b NOTEXEC">' + esc(o.link) + '</span>' : '<span class="muted">–</span>') + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="empty small">Nothing here 🎉</div>') + '</div>';
+  bindKpis(v);
+  v.querySelectorAll('.kpi[data-ck]').forEach(b => b.onclick = () => { S.f.ck = b.dataset.ck; S.f.status = ''; S.tab = 'tracker'; S.shown = 300; renderAll(); });
+  v.querySelectorAll('.proj-row').forEach(tr => tr.onclick = () => { S.f.project = S.f.project === tr.dataset.p ? '' : tr.dataset.p; renderAll(); });
+  if ($('btnExcCsv')) $('btnExcCsv').onclick = () => saveCsv('Checklist_missing', ['Project', 'Asset code', 'Equipment', 'Service', 'Due at', 'Carried out at', 'Serviced on', 'Entry says', 'Checklist status', 'Checklist found'], exc.map(r => [r.project, r.asset, r.desc, r.type, r.due, r.carriedAt, r.doneDate ? D(r.doneDate) : '', r.doneType, CKLABEL[r.ckSt], r.ckName]));
+  if ($('btnDiffCsv')) $('btnDiffCsv').onclick = () => saveCsv('Checklist_type_differs', ['Project', 'Asset code', 'Equipment', 'Service', 'Serviced on', 'Entry says', 'Checklist published', 'Checklist date', 'Days from service'], diffRows.map(r => [r.project, r.asset, r.desc, r.type, r.doneDate ? D(r.doneDate) : '', r.doneType, r.ckName, D(r.ckDate), r.ckOff]));
+  if ($('btnOrphCsv')) $('btnOrphCsv').onclick = () => saveCsv('Checklist_without_entry', ['Project', 'Asset code', 'Equipment', 'Published on', 'Checklist', 'Possibly covers'], od.map(o => [o.project, o.asset, o.desc, D(o.date), o.name, o.link]));
+}
+
+/* assets */
+function renderAssets(v) {
+  const rows = baseRows();
+  const m = new Map();
+  rows.forEach(r => { if (!m.has(r.key)) m.set(r.key, {asset: r.asset, desc: r.desc, project: r.project, cluster: r.cluster, current: r.current, currentDate: r.currentDate, avg: r.avgDaily, src: r.readingSrc, rs: []}); m.get(r.key).rs.push(r); });
+  let list = [...m.values()].map(a => { a.c = counts(a.rs); const up = a.rs.filter(r => r.status === 'UPCOMING').sort((x, y) => x.remaining - y.remaining)[0]; a.next = up || null; return a; });
+  const col = S.sort.col === 'due' ? 'attn' : S.sort.col;
+  list.sort((a, b) => {
+    if (col === 'attn') return (b.c.NOTEXEC * 3 + b.c.MISSED * 2 + b.c.DELAYED) - (a.c.NOTEXEC * 3 + a.c.MISSED * 2 + a.c.DELAYED) || a.asset.localeCompare(b.asset);
+    return String(a[col] || '').localeCompare(String(b[col] || ''));
+  });
+  const noMeter = list.filter(a => a.current === null).length;
+  v.innerHTML = '<div class="card pad"><h2>Assets (' + list.length + ')</h2><div class="muted small" style="margin-bottom:8px">Sorted by most services needing attention. ' + (noMeter ? noMeter + ' assets have no meter data (not in the logsheet and no servicing entry), so their services cannot be assessed.' : '') + '</div><div class="tw"><table><thead><tr><th class="ns">Project</th><th class="ns">Asset</th><th class="ns">Equipment</th><th class="n ns">Current reading</th><th class="n ns">Avg run / day</th><th class="n ns">Not exec.</th><th class="n ns">Missed</th><th class="n ns">Delayed</th><th class="n ns">Completed</th><th class="ns">Next service</th></tr></thead><tbody>' +
+    list.map(a => '<tr><td>' + esc(a.project) + '</td><td><b>' + esc(a.asset) + '</b></td><td>' + esc(a.desc) + '</td><td class="n">' + (a.current === null ? '<span class="b NOREADING">no data</span>' : fmt(a.current)) + (a.src === 'entry' ? '<div class="muted small">from service entry</div>' : (a.currentDate ? '<div class="muted small">' + D(a.currentDate) + '</div>' : '')) + '</td><td class="n">' + fmt(a.avg) + '</td><td class="n">' + (a.c.NOTEXEC ? '<b style="color:var(--nex)">' + a.c.NOTEXEC + '</b>' : 0) + '</td><td class="n">' + (a.c.MISSED ? '<b style="color:var(--miss)">' + a.c.MISSED + '</b>' : 0) + '</td><td class="n">' + (a.c.DELAYED ? '<b style="color:var(--delay)">' + a.c.DELAYED + '</b>' : 0) + '</td><td class="n">' + a.c.DONE + '</td><td>' + (a.next ? esc(a.next.type) + ' at ' + fmt(a.next.due) + ' <span class="muted">(' + fmt(a.next.remaining) + ' left' + (a.next.eta ? ', ~' + D(a.next.eta) : '') + ')</span>' : '<span class="muted">–</span>') + '</td></tr>').join('') +
+    '</tbody></table></div></div>';
+}
+
+/* unmatched */
+function renderUnmatched(v) {
+  const f = S.f, q = f.q.trim().toLowerCase();
+  const rg = periodRange();
+  const list = S.data.unmatched.filter(u => (!rg || (u.date && u.date >= rg.from && u.date <= rg.to)) && (!f.project || u.project === f.project) && (!f.equip || u.desc === f.equip) && (!q || (u.asset + ' ' + u.desc + ' ' + u.project + ' ' + u.defect).toLowerCase().includes(q)))
+    .sort((a, b) => (a.project || '').localeCompare(b.project || '') || a.asset.localeCompare(b.asset) || (a.date || 0) - (b.date || 0));
+  v.innerHTML = '<div class="card pad"><h2>Servicing entries not matched to a scheduled service (' + list.length + ')</h2><div class="muted small" style="margin-bottom:8px">Periodic servicing entries in the system with no scheduled service close enough to their meter reading. These usually mean a wrong meter reading in the entry, a wrong asset, or a service that was never in the schedule. Repair entries are not shown.</div>' +
+    (list.length ? '<div class="tw"><table><thead><tr><th class="ns">Project</th><th class="ns">Asset</th><th class="ns">Equipment</th><th class="ns">Date</th><th class="n ns">Reading entered</th><th class="ns">Servicing entered</th></tr></thead><tbody>' +
+      list.map(u => '<tr><td>' + esc(u.project) + '</td><td><b>' + esc(u.asset) + '</b></td><td>' + esc(u.desc) + '</td><td>' + (u.date ? D(u.date) : '') + '</td><td class="n">' + fmt(u.reading) + '</td><td>' + esc(u.defect) + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="empty">Nothing unmatched 🎉</div>') + '</div>';
+}
+
+/* rules */
+function renderRules(v) {
+  const d = S.data, o = S.opts;
+  const noMeter = S.data.assets.filter(a => a.current === null).length;
+  const mism = S.rows.filter(r => r.note && r.note.indexOf('Logged as') === 0).length;
+  v.innerHTML = '<div class="grid2"><div class="card pad"><h2>How each service is judged</h2>' +
+    '<div class="rule"><span class="b DONE">Completed</span> A servicing entry exists for the asset near the due reading, carried out no more than <b>' + o.delayHrs + ' hrs</b> after the due reading (early is fine).</div>' +
+    '<div class="rule"><span class="b DELAYED">Delayed</span> Entry exists but the reading crossed due by more than <b>' + o.delayHrs + ' hrs</b> (up to ' + o.missHrs + ').</div>' +
+    '<div class="rule"><span class="b MISSED">Missed</span> Entry exists but the reading crossed due by more than <b>' + o.missHrs + ' hrs</b>.</div>' +
+    '<div class="rule"><span class="b NOTEXEC">Not executed</span> The asset\'s current reading is already past the due reading and <b>no servicing entry</b> was found. It is tagged "just due", ">' + o.delayHrs + ' hrs over" or ">' + o.missHrs + ' hrs over" so you can prioritise.</div>' +
+    '<div class="rule"><span class="b UPCOMING">Upcoming</span> Due reading not reached yet. <b>Needs attention</b> lists every Not executed service plus upcoming services within <b>' + o.attnHrs + ' hrs</b>. <b>Coming up</b> groups the rest into a weekly or monthly plan using the asset\'s average running hours over the last ' + o.trendDays + ' days.</div>' +
+    '<div class="rule"><span class="b NOREADING">No meter data</span> The asset has no logsheet rows and no servicing entry, so its current reading is unknown.</div>' +
+    '<div class="rule"><b>Compliance %</b> = (Completed on time + Delayed) ÷ services due. Delayed services were done, only late. Missed (more than ' + o.missHrs + ' hrs late) and Not executed services are not counted as compliant.</div>' +
+    '<h2 style="margin-top:14px">Thresholds</h2><div class="filters"><label>Delayed after <input type="number" id="oDelay" min="0" value="' + o.delayHrs + '"> hrs</label><label>Missed after <input type="number" id="oMiss" min="0" value="' + o.missHrs + '"> hrs</label><label>Needs attention within <input type="number" id="oAttn" min="0" value="' + o.attnHrs + '"> hrs</label><label>Checklist date match ± <input type="number" id="oCk" min="0" value="' + o.ckWin + '"> days</label><label>Upcoming KPI within <input type="number" id="oSoon" min="0" value="' + o.soonHrs + '"> hrs</label><button class="btn sm" id="oReset">Reset</button></div><div class="muted small" style="margin-top:6px">Thresholds apply instantly and are remembered on your device. They are applied as-is to hours and kilometres.</div></div>' +
+    '<div class="card pad"><h2>Data check</h2>' +
+    '<div class="rule"><b>Latest meter date:</b> ' + D(d.asOf) + '<br><b>Schedules used:</b> ' + esc((d.files.schedules || []).join(', ')) + '<br><b>Logsheet data through:</b> ' + (d.files.logThrough ? D(d.files.logThrough) : D(d.asOf)) + '<br><b>Servicing history through:</b> ' + (d.files.bdThrough ? D(d.files.bdThrough) : '–') + ' (' + d.counts.pmEntries + ' servicing entries used)</div>' +
+    '<div class="rule"><b>Checklists:</b> ' + (S.hasCk ? (d.counts.auRows || 0) + ' maintenance checklists for your assets, published through ' + (d.files.auThrough ? D(d.files.auThrough) : '–') : 'no publish report uploaded yet') + '</div>' +
+    '<div class="rule"><b>' + Object.keys(S.over).length + '</b> manual updates from the not-executed update sheet are applied.</div>' +
+    '<div class="rule"><b>' + noMeter + '</b> assets have no meter data.</div>' +
+    '<div class="rule"><b>' + d.unmatched.length + '</b> servicing entries could not be matched to the schedule (see <a href="#" id="goUn">Unmatched entries</a>).</div>' +
+    '<div class="rule"><b>' + mism + '</b> completed services were logged under a lower service type than scheduled (see the Note column in the tracker), e.g. a 500-hr service entered as 250/300.</div>' +
+    '<h2 style="margin-top:14px">How it is kept up to date</h2><div class="muted small">The quarterly schedule is saved and reused. The MS (first) sheet of each schedule file is the master for your assets, and the second sheet only decides which assets are yours. Each daily logsheet or history upload adds to the saved data: days and dates covered by the new file replace the older copy, earlier days are kept. Each periodic-servicing entry (e.g. "250 / 300 HRS SERVICING") is matched to the scheduled service of the same asset whose due reading is closest to its meter reading (up to ' + o.earlyWin + ' hrs early and ' + o.lateWin + ' hrs late), preferring the same service interval. Repairs and breakdowns are not treated as servicing. Manual updates and "Carried out at" readings filled in the maintenance schedule are used only when the system has no matching entry. When the same service is in more than one quarterly schedule, the due reading from the later quarter is used.</div>' +
+    '<h2 style="margin-top:14px">How checklists are compared</h2><div class="muted small">Only maintenance checklists named with a service interval (for example 250 H, 500 H, 1000 H) are used. Weekly, Daily, PDI, PRI, MEA and similar checklists are ignored. For each executed service, the checklist of the same asset published within ±' + o.ckWin + ' days of the service date is matched. <b>Published</b> means the checklist type fits the service (the same or a higher interval). <b>Done, type differs</b> means a checklist was found in the window but for a different interval: it counts as done and is marked for review. <b>Missing</b> means none was found. <b>No checklist for asset</b> means the asset has no maintenance checklist at all in the report. A checklist with no matching entry is listed so you can check whether an entry is missing.</div></div></div>';
+  const apply = () => { S.opts.delayHrs = +$('oDelay').value || 0; S.opts.missHrs = Math.max(+$('oMiss').value || 0, S.opts.delayHrs); S.opts.attnHrs = +$('oAttn').value || 0; S.opts.ckWin = +$('oCk').value || 0; S.opts.soonHrs = Math.max(+$('oSoon').value || 0, S.opts.attnHrs); try { localStorage.setItem('pm_opts', JSON.stringify({delayHrs: S.opts.delayHrs, missHrs: S.opts.missHrs, soonHrs: S.opts.soonHrs, attnHrs: S.opts.attnHrs, ckWinV2: S.opts.ckWin})); } catch (e) {} reclassify(); renderView(); };
+  ['oDelay', 'oMiss', 'oAttn', 'oSoon', 'oCk'].forEach(i => $(i).onchange = apply);
+  $('oReset').onclick = () => { Object.assign(S.opts, {delayHrs: 20, missHrs: 50, soonHrs: 100, attnHrs: 10, ckWin: 20}); apply(); };
+  $('goUn').onclick = e => { e.preventDefault(); S.tab = 'unmatched'; renderTabs(); renderView(); };
+}
+
+/* ---------------- wiring ---------------- */
+function refreshGate() {
+  const has = !!S.data;
+  $('btnUpload').classList.toggle('hide', !S.owner);
+  if (!S.owner) $('uploadPanel').classList.add('hide');
+  else if (!has) $('uploadPanel').classList.remove('hide');
+  else if (!S.userPanel) $('uploadPanel').classList.add('hide');
+  $('noData').classList.toggle('hide', has || S.owner || !S.userKnown);
+  if (has) renderUpd();
+}
+const drop = $('drop'), fileIn = $('file');
+drop.addEventListener('click', e => { if (e.target.closest('.slot')) return; fileIn.click(); });
+fileIn.onchange = () => { if (fileIn.files.length) handleFiles([...fileIn.files]); fileIn.value = ''; };
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => { if (e.dataTransfer.files.length) handleFiles([...e.dataTransfer.files]); });
+$('btnUpload').onclick = () => { S.userPanel = true; $('uploadPanel').classList.toggle('hide'); renderSlots(); };
+$('btnTpl').onclick = downloadTemplate;
+$('btnUpd').onclick = () => $('updFile').click();
+$('updFile').onchange = () => { const f = $('updFile').files; if (f.length) handleFiles([...f]); $('updFile').value = ''; };
+let clrArmed = false;
+$('btnClrMan').onclick = async () => {
+  const b = $('btnClrMan');
+  if (!clrArmed) { clrArmed = true; b.textContent = 'Click again to confirm'; setTimeout(() => { clrArmed = false; b.textContent = 'Clear manual updates'; }, 4000); return; }
+  clrArmed = false; b.textContent = 'Clear manual updates';
+  S.over = {}; reclassify(); showApp(); renderUpd();
+  const r = await persist(); renderSync(r.shared ? 'team' : 'local'); toast('Manual updates cleared.');
+};
+
+renderSlots();
+
+(async function boot() {
+  // owner's device: instant paint from local cache
+  try {
+    const c = JSON.parse(localStorage.getItem('pm_cache') || 'null');
+    if (c && c.r) { await loadFromPacked(c.meta, c.r, c.s, c.o, c.t, 'local'); renderSlots(); }
+  } catch (e) { console.warn('cache load failed', e); }
+  try {
+    if (window.claude && claude.use) {
+      const [u, d, dn] = await Promise.all([claude.use('user'), claude.use('db'), claude.use('downloads')]);
+      db = d; dl = dn;
+      let w = null;
+      try { if (u && typeof u.can === 'function') w = await u.can('data.write'); } catch (e) {}
+      S.owner = !!(u && (w === true || (typeof u.canEdit === 'function' && await u.canEdit()) || (typeof u.isOwner === 'function' && await u.isOwner())));
+      S.userKnown = true;
+      if (!S.owner) { try { localStorage.removeItem('pm_cache'); } catch (e) {} }
+      refreshGate();
+      if (S.data) renderView();
+      if (db) {
+        db.doc('pm/meta').onSnapshot(async snap => {
+          if (!snap.exists) return;
+          const m = snap.data();
+          if (m.version === S.version) { if (S.data) renderSync('team'); return; }
+          await loadFromDb(m);
+          refreshGate();
+        }, err => console.warn('meta sub', err));
+      }
+    } else { S.userKnown = true; refreshGate(); }
+  } catch (e) { console.warn('capabilities unavailable', e); S.userKnown = true; refreshGate(); }
+})();
+})();
+</script>
+</body>
+</html>
